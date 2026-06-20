@@ -25,6 +25,7 @@ _TTS_MAX_CHARS = 4000
 
 class TTSRequest(BaseModel):
     text: str
+    voice: str | None = None  # optional Aura voice override; defaults to the calm bedtime voice
 
 
 @router.post("/stt", response_model=TranscriptResult)
@@ -60,7 +61,7 @@ def text_to_speech(req: TTSRequest) -> TTSResult:
             detail=f"text must not exceed {_TTS_MAX_CHARS} characters",
         )
     try:
-        return deepgram_client.synthesize(req.text)
+        return deepgram_client.synthesize(req.text, voice=req.voice)
     except Exception as exc:
         logger.warning("TTS error: %s", exc)
         raise HTTPException(status_code=500, detail=f"TTS failed: {exc}")

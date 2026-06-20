@@ -29,6 +29,26 @@ from .safety import filter_image_prompt
 logger = logging.getLogger("lullow.visual")
 
 
+# Map a recurring character's species to an emoji so the keyless mock picture-book
+# shows the SAME character on every page (consistency in the demo).
+_SPECIES_EMOJI = {
+    "fox": "🦊", "rabbit": "🐰", "bunny": "🐰", "bear": "🐻", "cat": "🐱",
+    "kitten": "🐱", "dog": "🐶", "puppy": "🐶", "owl": "🦉", "deer": "🦌",
+    "mouse": "🐭", "hedgehog": "🦔", "panda": "🐼", "koala": "🐨", "lamb": "🐑",
+    "sheep": "🐑", "duck": "🦆", "penguin": "🐧", "elephant": "🐘", "lion": "🦁",
+    "tiger": "🐯", "frog": "🐸", "turtle": "🐢", "whale": "🐳", "horse": "🐴",
+    "raccoon": "🦝", "squirrel": "🐿️", "bird": "🐦", "monkey": "🐵",
+}
+
+
+def _character_emoji(world: StoryWorld) -> str | None:
+    """Emoji for the world's primary recurring character, if recognised."""
+    if not world.recurring_characters:
+        return None
+    species = (world.recurring_characters[0].species or "").lower().strip()
+    return _SPECIES_EMOJI.get(species)
+
+
 # --------------------------------------------------------------------------- #
 # Scene splitting
 # --------------------------------------------------------------------------- #
@@ -138,7 +158,12 @@ def _ensure_master_reference(world: StoryWorld) -> tuple[StoryWorld, str | None]
     logger.info(
         "Generating master reference portrait for %s the %s", char.name, char.species
     )
-    ref_url, is_mock = image_client.generate_page(safe_prompt, reference_image_url=None)
+    ref_url, is_mock = image_client.generate_page(
+        safe_prompt,
+        reference_image_url=None,
+        character_emoji=_SPECIES_EMOJI.get((char.species or "").lower().strip()),
+        palette_seed=char.name or "lullow",
+    )
 
     if is_mock:
         # Mock path: keep the SVG placeholder as the reference so pages are at
@@ -170,6 +195,10 @@ def generate_scenes(story: Story, world: StoryWorld, animate: bool = True) -> St
     # Ensure master reference image exists for character consistency (P1-1)
     world, ref_image_url = _ensure_master_reference(world)
 
+    # Consistent character + palette across this story's scenes (mock + live)
+    char_emoji = _character_emoji(world)
+    palette_seed = story.story_id
+
     populated: list[StoryScene] = []
     for idx, raw in enumerate(raw_scenes):
         text = raw.get("text", "")
@@ -178,11 +207,14 @@ def generate_scenes(story: Story, world: StoryWorld, animate: bool = True) -> St
         # Safety-filter the image prompt
         safe_prompt = filter_image_prompt(raw_prompt)
 
-        # Generate image — pass reference for character consistency
+        # Generate image — pass reference + character/palette for consistency
         try:
             image_url, is_image_mock = image_client.generate_page(
                 safe_prompt,
                 reference_image_url=ref_image_url,
+                character_emoji=char_emoji,
+                palette_seed=palette_seed,
+                scene_index=idx,
             )
         except Exception as exc:
             logger.warning("Image generation error for scene %d: %s", idx, exc)
