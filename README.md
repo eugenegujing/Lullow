@@ -21,13 +21,12 @@ have been applied, including child-safety hardening (see _Safety_ below).
 ## Table of contents
 1. [How to run](#how-to-run)
 2. [Architecture](#architecture)
-3. [Sponsor tracks](#sponsor-tracks)
-4. [Features (what's built)](#features-whats-built)
-5. [Safety design](#safety-design)
-6. [Project structure](#project-structure)
-7. [API & environment](#api--environment)
-8. [Demo flow](#demo-flow)
-9. [Operational notes](#operational-notes)
+3. [Features (what's built)](#features-whats-built)
+4. [Safety design](#safety-design)
+5. [Project structure](#project-structure)
+6. [API & environment](#api--environment)
+7. [Demo flow](#demo-flow)
+8. [Operational notes](#operational-notes)
 
 ---
 
@@ -93,28 +92,14 @@ Frontend (React + Vite + TypeScript + Tailwind)   Backend (FastAPI, Python 3.12)
   │     audio/picture toggle, breathing ritual,     │     emotion → plan → safety → story
   │     persistent "find a grown-up" help           │     → ritual → review trail
   └── Parent Dashboard  (route /parent)             ├── Memory layer  → Redis (in-memory fallback)
-        profile, safety settings, story-world        ├── Visual layer  → image model → Pika (image-first)
-        memory, history + review trail, growth        └── Eval / annotation → Arize + Terac
-        journal, Arize eval dashboard, Terac labels
+        profile, safety settings, story-world        └── Visual layer  → image model → Pika (image-first)
+        memory, history + review trail, growth
+        journal
 ```
 
 Every sponsor integration is wrapped in a client with a **graceful mock
 fallback** and **lazy SDK import**, so a missing key or package never crashes the
 app — it degrades to deterministic mock output.
-
----
-
-## Sponsor tracks
-
-| Sponsor | Role in Lullow | How it shows up |
-|---|---|---|
-| **Anthropic (Claude)** | The reasoning layer: emotion extraction, safe story planning, story generation, parent rewriting, safety evaluation, journal reflection | `services/*` + `prompts/prompts.py` (voice/tone + safety baked into every prompt) |
-| **Deepgram** | Voice-first STT (child/parent input) + calming bedtime TTS narration (per-scene too) | `integrations/deepgram_client.py`, `routers/voice.py` |
-| **Pika** | Image-to-video, **very-low-motion** picture-book animation (image-FIRST, not text-to-video) — low motion = bedtime-safe, minimal morphing | `integrations/pika_client.py`, `services/visual.py` |
-| **Redis** | Family / story-world memory + parent safety settings → continuity & a recurring character across nights | `integrations/redis_client.py`, `services/memory.py` |
-| **Arize** | Evaluation of story safety, tone, and parent-constraint adherence; powers the in-app eval dashboard | `integrations/arize_client.py` (local JSONL trace + optional remote) |
-| **Terac** | Parent-style human-feedback annotation loop (age-appropriate, too-scary, warm, etc.) | `integrations/terac_client.py`, parent dashboard labels |
-| **Best UI/UX** | Low-stimulation, warm, voice-first bedtime interface (dark moonlit palette, slow motion, no flashing) | `frontend/` (child + parent modes) |
 
 ---
 
@@ -140,8 +125,7 @@ app — it degrades to deterministic mock output.
   constraints / avoided topics / parent edits / status) and safety scores.
 - Parent **revise** (e.g. "make softer") and **approve** (writes back to memory).
 - **Growth journal** (emotion counts + helpful elements + non-diagnostic
-  reflection) and an **Arize-style eval dashboard**.
-- **Terac annotation** labels per story.
+  reflection).
 
 **Backend pipeline** (per the plan's §15.2)
 `emotion → load memory + parent constraints → safety/escalation gate → plan →
@@ -185,7 +169,7 @@ Lullow/
 │   │   ├── config.py          ← settings + live-vs-mock feature_status()
 │   │   ├── models/schemas.py  ← Pydantic data model (the shared contract)
 │   │   ├── prompts/prompts.py ← Claude prompts (voice/tone + safety rules)
-│   │   ├── integrations/      ← anthropic, deepgram, redis, image, pika, arize, terac
+│   │   ├── integrations/      ← anthropic, deepgram, redis, image, pika
 │   │   ├── services/          ← emotion, planner, safety, story, ritual,
 │   │   │                         review_trail, visual, journal, memory
 │   │   └── routers/           ← session, story, voice, visual, profile, settings, journal
@@ -210,9 +194,8 @@ Lullow/
   profile/settings CRUD, and `GET /api/status` (live-vs-mock badges).
 - **Keys (all optional)** live in `.env` (see `.env.example`): `ANTHROPIC_API_KEY`,
   `DEEPGRAM_API_KEY`, `REDIS_URL`, `PIKA_API_KEY`, `GEMINI_API_KEY` /
-  `OPENAI_API_KEY` (image), `ARIZE_API_KEY` + `ARIZE_SPACE_ID`, `TERAC_API_KEY`.
-  Anything left blank runs on its mock. If `ANTHROPIC_API_KEY` is set in your
-  shell, Claude runs live automatically.
+  `OPENAI_API_KEY` (image). Anything left blank runs on its mock. If
+  `ANTHROPIC_API_KEY` is set in your shell, Claude runs live automatically.
 
 ---
 
@@ -226,10 +209,8 @@ Lullow/
    tell a story; it shows the warm help screen.
 4. **Parent dashboard** (`/parent`) → review the story's **review trail + safety
    scores**, **revise** it, **approve** it (watch the story world remember the
-   theme), browse the **growth journal**, **eval dashboard**, and **label** a
-   story (Terac).
-5. Note the **live/mock badge** (bottom-right) showing which sponsor integrations
-   are wired.
+   theme), and browse the **growth journal**.
+5. Note the **live/mock badge** (bottom-right) showing which integrations are wired.
 
 ---
 
@@ -243,7 +224,6 @@ Lullow/
   instant; flip to `True` for Claude-personalized rituals.
 - **Live image paths** (Gemini / OpenAI reference-image) are only exercised with
   a real key — verify character consistency manually once keys are set.
-- Generated artifacts (Arize traces, Terac annotations) are written under
-  `backend/generated/` (git-ignored).
+- Generated artifacts are written under `backend/generated/` (git-ignored).
 
 See `Lullow_Project_Plan.md` for the full product spec and sponsor-track rationale.

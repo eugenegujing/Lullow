@@ -810,6 +810,13 @@ Observability / Evaluation
 
 ## 13. Sponsor Track Mapping
 
+> **Focus:** the **core** tracks we are building and refining are **Anthropic
+> (Claude), Deepgram, Pika, Redis**, plus **Best UI/UX**. **Arize** and **Terac**
+> are **optional/stretch** — kept here in the plan for reference, but not headlined
+> in the README and not required for the MVP. (See `WORKSTREAMS.md` for who owns
+> what; the optional evaluation lab and hardware lamp live at the bottom of that
+> file.)
+
 ### 13.1 Deepgram
 
 Role:
@@ -902,7 +909,7 @@ Key claim:
 
 ---
 
-### 13.5 Arize
+### 13.5 Arize (Optional / stretch)
 
 Role:
 
@@ -924,7 +931,7 @@ Key claim:
 
 ---
 
-### 13.6 Terac
+### 13.6 Terac (Optional / stretch)
 
 Role:
 
