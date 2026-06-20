@@ -1,8 +1,19 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind v4 entry — this loads v4's full default theme (spacing, fontSize,
+   maxWidth, borderRadius scales, preflight, utilities). The v3-style
+   `@tailwind base/components/utilities` directives do NOT load the default
+   theme under v4, which silently drops every spacing/size utility. */
+@import "tailwindcss";
 
-/* Base: never pure white in child mode */
+/* Load the legacy JS config so its theme.extend (custom colors, fonts,
+   shadows, animations) merges onto v4's default theme. */
+@config "../tailwind.config.js";
+
+/* ------------------------------------------------------------------ */
+/* Base — light warm theme by default.                                */
+/* The child STORY experience opts into dark moonlit mode per-screen  */
+/* (the .moonlit-mode wrapper / NightSky), a deliberate bedtime-safety */
+/* + judging point.                                                    */
+/* ------------------------------------------------------------------ */
 html, body, #root {
   height: 100%;
   margin: 0;
@@ -10,32 +21,53 @@ html, body, #root {
 }
 
 body {
-  background-color: #07091e;
-  color: #ede4d0;
-  font-family: 'Georgia', 'Times New Roman', serif;
+  background-color: #FAF7F2; /* cream-100 */
+  color: #2E2A39;            /* ink-400 */
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* Smooth scrollbar */
+/* Soft scrollbar that suits the light theme */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
+  height: 10px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(200, 180, 130, 0.3);
-  border-radius: 3px;
+  background: rgba(167, 139, 250, 0.28); /* lavender */
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 124, 246, 0.45);
+  background-clip: padding-box;
 }
 
-/* Gentle focus rings */
+/* Accessible focus rings on the light theme (lavender) */
 *:focus-visible {
-  outline: 2px solid rgba(240, 168, 48, 0.6);
+  outline: 3px solid rgba(139, 124, 246, 0.55);
+  outline-offset: 2px;
+  border-radius: 12px;
+}
+
+/* Inside dark moonlit mode, focus rings switch to warm amber */
+.moonlit-mode *:focus-visible {
+  outline: 2px solid rgba(240, 168, 48, 0.65);
   outline-offset: 3px;
-  border-radius: 8px;
+}
+
+/* Inside dark moonlit mode, the scrollbar warms up too */
+.moonlit-mode ::-webkit-scrollbar-thumb {
+  background: rgba(200, 180, 130, 0.3);
+  background-clip: padding-box;
 }
 
 @layer utilities {
+  /* Dark-mode story glows (preserved from the original moonlit theme) */
   .glow-amber {
     box-shadow: 0 0 20px rgba(240, 168, 48, 0.4), 0 0 60px rgba(240, 168, 48, 0.15);
   }
@@ -44,5 +76,17 @@ body {
   }
   .text-glow {
     text-shadow: 0 0 12px rgba(240, 200, 120, 0.5);
+  }
+
+  /* Light-theme helpers */
+  .gradient-warm {
+    background:
+      radial-gradient(1100px 520px at 12% -8%, rgba(167,139,250,0.16) 0%, transparent 55%),
+      radial-gradient(900px 480px at 96% 4%, rgba(251,180,140,0.16) 0%, transparent 55%),
+      radial-gradient(700px 520px at 50% 112%, rgba(159,194,152,0.12) 0%, transparent 55%),
+      #FAF7F2;
+  }
+  .gradient-lavender {
+    background: linear-gradient(135deg, #8B7CF6 0%, #A78BFA 100%);
   }
 }

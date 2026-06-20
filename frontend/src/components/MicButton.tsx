@@ -166,8 +166,3 @@ export default function MicButton({ onBlob, onError, disabled = false }: Props) 
     </button>
   )
 }
-
-// Exported so the parent can reset the button to idle after processing completes
-export function useMicReset() {
-  // Hook placeholder — parent can track this via its own state
-}

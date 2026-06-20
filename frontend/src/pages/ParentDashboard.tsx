@@ -1,11 +1,13 @@
 /**
- * Parent Dashboard — warm dark card layout, full controls.
- * Tabs: Profile | Safety | Story World | History | Journal | Evals
+ * Parent Dashboard (route "/parent") — light "soft modern" theme.
+ * Tabs: Profile | Safety | Story World | History | Journal | Evals.
+ * All data is keyed by the ACTIVE child_id from ProfileContext, and profile
+ * edits sync back into the local roster so the picker stays in sync.
  */
 import { useState, useEffect, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import {
-  getProfile, putProfile,
+  putProfile,
   getSettings, putSettings,
   getStoryWorld, putStoryWorld,
   getStoryHistory,
@@ -17,271 +19,171 @@ import type {
   Story, GrowthJournal,
   AnnotationLabels,
 } from '../api'
-
-const CHILD_ID = 'child_001'
+import { useProfiles } from '../context/ProfileContext'
+import WarmBackground from '../components/WarmBackground'
+import Brand from '../components/Brand'
+import ProfileSwitcher from '../components/ProfileSwitcher'
+import {
+  Button, Card, ChipInput, SectionHeader, Slider, TextField, Toggle, Avatar,
+} from '../components/ui'
 
 // ------------------------------------------------------------------ //
-// Shared primitives
+// Small helpers
 // ------------------------------------------------------------------ //
 
 type Tab = 'profile' | 'safety' | 'world' | 'history' | 'journal' | 'evals'
 
-function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+/** Inline save-state message. */
+function SaveMsg({ msg }: { msg: string }) {
+  if (!msg) return null
+  const ok = msg.toLowerCase().includes('saved') && !msg.toLowerCase().includes('failed')
   return (
-    <div className="bg-night-900/60 border border-night-700/50 rounded-3xl p-6 mb-6">
-      <h3 className="text-moon-300 text-lg font-semibold mb-4 border-b border-night-700/50 pb-3">
-        {title}
-      </h3>
-      {children}
-    </div>
+    <p className={`mt-3 text-sm font-medium ${ok ? 'text-sage-500' : 'text-peach-500'}`}>{msg}</p>
   )
 }
 
-function Label({ children }: { children: React.ReactNode }) {
-  return <label className="block text-moon-400 text-sm mb-1.5 font-light">{children}</label>
-}
-
-function Input({
-  value, onChange, placeholder, type = 'text', disabled
-}: {
-  value: string; onChange: (v: string) => void
-  placeholder?: string; type?: string; disabled?: boolean
-}) {
+/** A small green/peach pill used for safety badges. */
+function Badge({ ok, children }: { ok: boolean; children: React.ReactNode }) {
   return (
-    <input
-      type={type}
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      placeholder={placeholder}
-      disabled={disabled}
-      className="
-        w-full px-4 py-2.5 rounded-xl
-        bg-night-800/60 border border-night-600/50
-        text-moon-200 placeholder-night-500 text-sm
-        focus:outline-none focus:border-glow-amber/40
-        disabled:opacity-40 transition-all duration-300
-      "
-    />
-  )
-}
-
-function TextArea({
-  value, onChange, placeholder, rows = 3
-}: {
-  value: string; onChange: (v: string) => void; placeholder?: string; rows?: number
-}) {
-  return (
-    <textarea
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      placeholder={placeholder}
-      rows={rows}
-      className="
-        w-full px-4 py-2.5 rounded-xl resize-none
-        bg-night-800/60 border border-night-600/50
-        text-moon-200 placeholder-night-500 text-sm
-        focus:outline-none focus:border-glow-amber/40
-        transition-all duration-300
-      "
-    />
-  )
-}
-
-function SaveButton({ onClick, saving, label = 'Save' }: { onClick: () => void; saving: boolean; label?: string }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={saving}
-      className="
-        mt-4 px-6 py-2.5 rounded-xl
-        bg-night-700/60 border border-night-500/60
-        text-moon-200 text-sm font-light
-        hover:border-glow-amber/50 hover:text-glow-amber
-        disabled:opacity-40 disabled:cursor-not-allowed
-        transition-all duration-400
-      "
+    <span
+      className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border font-medium ${
+        ok
+          ? 'border-sage-200 text-sage-500 bg-sage-50'
+          : 'border-peach-200 text-peach-500 bg-peach-50'
+      }`}
     >
-      {saving ? 'Saving…' : label}
-    </button>
-  )
-}
-
-function TagList({
-  tags, onRemove, onAdd, placeholder
-}: {
-  tags: string[]; onRemove: (i: number) => void; onAdd: (v: string) => void; placeholder?: string
-}) {
-  const [draft, setDraft] = useState('')
-
-  const commit = () => {
-    const v = draft.trim()
-    if (v && !tags.includes(v)) { onAdd(v); setDraft('') }
-  }
-
-  return (
-    <div>
-      <div className="flex flex-wrap gap-2 mb-2">
-        {tags.map((t, i) => (
-          <span
-            key={i}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-night-700/60 border border-night-600/50 text-moon-300 text-xs"
-          >
-            {t}
-            <button
-              type="button"
-              onClick={() => onRemove(i)}
-              className="text-night-500 hover:text-glow-peach transition-colors"
-            >
-              ✕
-            </button>
-          </span>
-        ))}
-      </div>
-      <div className="flex gap-2">
-        <input
-          value={draft}
-          onChange={e => setDraft(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); commit() } }}
-          placeholder={placeholder ?? 'Add…'}
-          className="flex-1 px-3 py-1.5 rounded-xl bg-night-800/50 border border-night-600/40 text-moon-200 placeholder-night-500 text-xs focus:outline-none focus:border-glow-amber/30 transition-all duration-300"
-        />
-        <button
-          type="button"
-          onClick={commit}
-          className="px-3 py-1.5 rounded-xl bg-night-700/50 border border-night-600/40 text-moon-400 text-xs hover:border-glow-amber/40 transition-all duration-300"
-        >
-          + Add
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
-  return (
-    <label className="flex items-center gap-3 cursor-pointer select-none">
-      <div className="relative">
-        <input
-          type="checkbox"
-          className="sr-only"
-          checked={checked}
-          onChange={e => onChange(e.target.checked)}
-        />
-        <div
-          className={`w-10 h-5 rounded-full transition-colors duration-300 ${checked ? 'bg-glow-amber/60' : 'bg-night-700'}`}
-        />
-        <div
-          className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-moon-200 shadow transition-transform duration-300 ${checked ? 'translate-x-5' : ''}`}
-        />
-      </div>
-      <span className="text-moon-300 text-sm font-light">{label}</span>
-    </label>
+      <span aria-hidden="true">{ok ? '✓' : '!'}</span> {children}
+    </span>
   )
 }
 
 // ------------------------------------------------------------------ //
 // Profile tab
 // ------------------------------------------------------------------ //
-function ProfileTab() {
+function ProfileTab({ childId }: { childId: string }) {
+  const { activeProfile, updateProfile } = useProfiles()
   const [profile, setProfile] = useState<ChildProfile | null>(null)
-  const [saving, setSaving]   = useState(false)
-  const [msg, setMsg]         = useState('')
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
 
+  // Seed from the local roster (instant) so the dashboard works even offline.
   useEffect(() => {
-    getProfile(CHILD_ID).then(setProfile).catch(() => {})
-  }, [])
+    if (activeProfile) setProfile(activeProfile.profile)
+  }, [activeProfile, childId])
 
   const save = async () => {
     if (!profile) return
     setSaving(true)
     try {
       await putProfile(profile)
+      updateProfile(childId, { profile })
       setMsg('Saved!')
     } catch {
-      setMsg('Save failed — please try again.')
+      // Still persist locally even if the backend is unreachable.
+      updateProfile(childId, { profile })
+      setMsg('Saved on this device (backend offline).')
     } finally {
       setSaving(false)
-      setTimeout(() => setMsg(''), 2500)
+      setTimeout(() => setMsg(''), 2800)
     }
   }
 
-  if (!profile) return <p className="text-moon-500 text-sm">Loading…</p>
+  if (!profile) return <p className="text-ink-100 text-sm">Loading…</p>
 
-  const update = (field: keyof ChildProfile, value: unknown) =>
-    setProfile(p => p ? { ...p, [field]: value } as ChildProfile : p)
-
-  const listField = (field: keyof ChildProfile) => profile[field] as string[]
+  const update = <K extends keyof ChildProfile>(field: K, value: ChildProfile[K]) =>
+    setProfile(p => (p ? { ...p, [field]: value } : p))
 
   return (
-    <div>
-      <SectionCard title="Child details">
+    <div className="space-y-5">
+      <Card>
+        <SectionHeader title="Child details" eyebrow="Profile" className="mb-5" />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div><Label>Name</Label><Input value={profile.name} onChange={v => update('name', v)} /></div>
-          <div><Label>Age</Label><Input type="number" value={String(profile.age)} onChange={v => update('age', parseInt(v) || 4)} /></div>
-          <div><Label>Language</Label><Input value={profile.preferred_language ?? 'English'} onChange={v => update('preferred_language', v)} /></div>
-          <div><Label>Story length (min)</Label><Input type="number" value={String(profile.preferred_story_length_minutes)} onChange={v => update('preferred_story_length_minutes', parseInt(v) || 5)} /></div>
-        </div>
-      </SectionCard>
-
-      <SectionCard title="Character preferences">
-        <div className="space-y-4">
-          <div>
-            <Label>Favorite animals</Label>
-            <TagList
-              tags={listField('favorite_animals')}
-              onRemove={i => update('favorite_animals', listField('favorite_animals').filter((_, j) => j !== i))}
-              onAdd={v => update('favorite_animals', [...listField('favorite_animals'), v])}
-              placeholder="fox, rabbit…"
-            />
-          </div>
-          <div>
-            <Label>Favorite settings</Label>
-            <TagList
-              tags={listField('favorite_settings')}
-              onRemove={i => update('favorite_settings', listField('favorite_settings').filter((_, j) => j !== i))}
-              onAdd={v => update('favorite_settings', [...listField('favorite_settings'), v])}
-              placeholder="moon garden…"
-            />
-          </div>
-          <div>
-            <Label>Comfort objects</Label>
-            <TagList
-              tags={listField('comfort_objects')}
-              onRemove={i => update('comfort_objects', listField('comfort_objects').filter((_, j) => j !== i))}
-              onAdd={v => update('comfort_objects', [...listField('comfort_objects'), v])}
-              placeholder="moon lamp…"
-            />
-          </div>
-          <div>
-            <Label>Sensitive topics (to handle gently)</Label>
-            <TagList
-              tags={listField('sensitive_topics')}
-              onRemove={i => update('sensitive_topics', listField('sensitive_topics').filter((_, j) => j !== i))}
-              onAdd={v => update('sensitive_topics', [...listField('sensitive_topics'), v])}
-              placeholder="being alone…"
+          <TextField label="Name" value={profile.name} onChange={e => update('name', e.target.value)} />
+          <TextField
+            label="Age"
+            type="number"
+            min={2}
+            max={12}
+            value={String(profile.age)}
+            onChange={e => update('age', Math.min(12, Math.max(2, Number(e.target.value) || 5)))}
+          />
+          <TextField
+            label="Language"
+            value={profile.preferred_language ?? 'English'}
+            onChange={e => update('preferred_language', e.target.value)}
+          />
+          <div className="flex items-end pb-1">
+            <Slider
+              label="Story length"
+              value={profile.preferred_story_length_minutes}
+              onChange={v => update('preferred_story_length_minutes', v)}
+              min={2}
+              max={15}
+              unit="min"
             />
           </div>
         </div>
-      </SectionCard>
+      </Card>
 
-      <SaveButton onClick={save} saving={saving} />
-      {msg && <p className={`mt-2 text-sm ${msg.startsWith('Save failed') ? 'text-glow-peach' : 'text-green-400'}`}>{msg}</p>}
+      <Card>
+        <SectionHeader title="Character preferences" eyebrow="What they love" className="mb-5" />
+        <div className="space-y-5">
+          <ChipInput
+            label="Favorite animals"
+            values={profile.favorite_animals}
+            onChange={v => update('favorite_animals', v)}
+            placeholder="fox, rabbit…"
+          />
+          <ChipInput
+            label="Favorite settings"
+            values={profile.favorite_settings}
+            onChange={v => update('favorite_settings', v)}
+            placeholder="moon garden…"
+            tone="sage"
+          />
+          <ChipInput
+            label="Comfort objects"
+            values={profile.comfort_objects}
+            onChange={v => update('comfort_objects', v)}
+            placeholder="moon lamp…"
+            tone="peach"
+          />
+          <ChipInput
+            label="Sensitive topics (handled gently)"
+            values={profile.sensitive_topics}
+            onChange={v => update('sensitive_topics', v)}
+            placeholder="being alone…"
+            tone="peach"
+          />
+        </div>
+      </Card>
+
+      <div>
+        <Button onClick={save} disabled={saving}>
+          {saving ? 'Saving…' : 'Save profile'}
+        </Button>
+        <SaveMsg msg={msg} />
+      </div>
     </div>
   )
 }
 
 // ------------------------------------------------------------------ //
-// Safety settings tab
+// Safety tab
 // ------------------------------------------------------------------ //
-function SafetyTab() {
+function SafetyTab({ childId }: { childId: string }) {
   const [settings, setSettings] = useState<ParentSafetySettings | null>(null)
-  const [saving, setSaving]     = useState(false)
-  const [msg, setMsg]           = useState('')
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
 
   useEffect(() => {
-    getSettings(CHILD_ID).then(setSettings).catch(() => {})
-  }, [])
+    setLoading(true)
+    getSettings(childId)
+      .then(setSettings)
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [childId])
 
   const save = async () => {
     if (!settings) return
@@ -290,26 +192,29 @@ function SafetyTab() {
       await putSettings(settings)
       setMsg('Saved!')
     } catch {
-      setMsg('Save failed.')
+      setMsg('Save failed — please try again.')
     } finally {
       setSaving(false)
-      setTimeout(() => setMsg(''), 2500)
+      setTimeout(() => setMsg(''), 2800)
     }
   }
 
-  if (!settings) return <p className="text-moon-500 text-sm">Loading…</p>
+  if (loading) return <p className="text-ink-100 text-sm">Loading…</p>
+  if (!settings) return <p className="text-ink-100 text-sm">No settings available.</p>
 
-  const update = (field: keyof ParentSafetySettings, value: unknown) =>
-    setSettings(s => s ? { ...s, [field]: value } as ParentSafetySettings : s)
+  const update = <K extends keyof ParentSafetySettings>(field: K, value: ParentSafetySettings[K]) =>
+    setSettings(s => (s ? { ...s, [field]: value } : s))
 
   return (
-    <div>
-      <SectionCard title="Story controls">
+    <div className="space-y-5">
+      <Card>
+        <SectionHeader title="Story controls" eyebrow="Safety" className="mb-5" />
         <div className="space-y-4">
           <Toggle
             checked={settings.allow_child_initiated_sessions}
             onChange={v => update('allow_child_initiated_sessions', v)}
             label="Allow child to start stories alone"
+            description="If off, a grown-up needs to begin the session."
           />
           <Toggle
             checked={settings.requires_parent_review_for_new_themes}
@@ -321,67 +226,75 @@ function SafetyTab() {
             onChange={v => update('emergency_contact_enabled', v)}
             label="Enable emergency help button"
           />
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Max story length (min)</Label>
-              <Input
-                type="number"
-                value={String(settings.max_story_length_minutes)}
-                onChange={v => update('max_story_length_minutes', parseInt(v) || 8)}
-              />
-            </div>
-            <div>
-              <Label>Bedtime cutoff (e.g. 20:30)</Label>
-              <Input
-                value={settings.bedtime_cutoff ?? ''}
-                onChange={v => update('bedtime_cutoff', v || null)}
-                placeholder="20:30"
-              />
-            </div>
-          </div>
-          <div>
-            <Label>Visual mode</Label>
-            <div className="flex gap-3 mt-1">
-              {(['low_stimulation', 'off'] as const).map(m => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => update('visual_mode', m)}
-                  className={`px-4 py-2 rounded-xl text-sm border transition-all duration-300 ${settings.visual_mode === m ? 'border-glow-amber/60 text-glow-amber bg-night-700/60' : 'border-night-600/50 text-night-400 hover:border-night-500'}`}
-                >
-                  {m === 'low_stimulation' ? '🌙 Picture book' : '🔊 Audio only'}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </SectionCard>
-
-      <SectionCard title="Content filters">
-        <div className="space-y-4">
-          <div>
-            <Label>Blocked topics</Label>
-            <TagList
-              tags={settings.blocked_topics}
-              onRemove={i => update('blocked_topics', settings.blocked_topics.filter((_, j) => j !== i))}
-              onAdd={v => update('blocked_topics', [...settings.blocked_topics, v])}
-              placeholder="monsters, death…"
+          <div className="grid grid-cols-2 gap-4 pt-1">
+            <Slider
+              label="Max story length"
+              value={settings.max_story_length_minutes}
+              onChange={v => update('max_story_length_minutes', v)}
+              min={2}
+              max={20}
+              unit="min"
+            />
+            <TextField
+              label="Bedtime cutoff"
+              value={settings.bedtime_cutoff ?? ''}
+              onChange={e => update('bedtime_cutoff', e.target.value || null)}
+              placeholder="20:30"
+              hint="Optional. 24h time."
             />
           </div>
           <div>
-            <Label>Blocked words</Label>
-            <TagList
-              tags={settings.blocked_words}
-              onRemove={i => update('blocked_words', settings.blocked_words.filter((_, j) => j !== i))}
-              onAdd={v => update('blocked_words', [...settings.blocked_words, v])}
-              placeholder="Add a word…"
-            />
+            <span className="block text-ink-200 text-sm font-semibold mb-2">Default visual mode</span>
+            <div className="grid grid-cols-2 gap-3">
+              {(['low_stimulation', 'off'] as const).map(m => {
+                const active = settings.visual_mode === m
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => update('visual_mode', m)}
+                    aria-pressed={active}
+                    className={`flex items-center justify-center gap-2 py-3 rounded-2xl border-2 text-sm font-medium transition-all duration-200 ${
+                      active
+                        ? 'border-lavender-400 bg-lavender-100 text-lavender-700'
+                        : 'border-cream-300 bg-cream-50 text-ink-200 hover:border-lavender-200'
+                    }`}
+                  >
+                    {m === 'low_stimulation' ? '🌙 Picture book' : '🔊 Audio only'}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </div>
-      </SectionCard>
+      </Card>
 
-      <SaveButton onClick={save} saving={saving} />
-      {msg && <p className={`mt-2 text-sm ${msg.startsWith('Save') && !msg.includes('failed') ? 'text-green-400' : 'text-glow-peach'}`}>{msg}</p>}
+      <Card>
+        <SectionHeader title="Content filters" eyebrow="Safety" className="mb-5" />
+        <div className="space-y-5">
+          <ChipInput
+            label="Blocked topics"
+            values={settings.blocked_topics}
+            onChange={v => update('blocked_topics', v)}
+            placeholder="monsters, death…"
+            tone="peach"
+          />
+          <ChipInput
+            label="Blocked words"
+            values={settings.blocked_words}
+            onChange={v => update('blocked_words', v)}
+            placeholder="Add a word…"
+            tone="peach"
+          />
+        </div>
+      </Card>
+
+      <div>
+        <Button onClick={save} disabled={saving}>
+          {saving ? 'Saving…' : 'Save settings'}
+        </Button>
+        <SaveMsg msg={msg} />
+      </div>
     </div>
   )
 }
@@ -389,142 +302,163 @@ function SafetyTab() {
 // ------------------------------------------------------------------ //
 // Story World tab
 // ------------------------------------------------------------------ //
-function StoryWorldTab() {
-  const [world, setWorld]     = useState<StoryWorld | null>(null)
-  const [saving, setSaving]   = useState(false)
-  const [msg, setMsg]         = useState('')
+function StoryWorldTab({ childId }: { childId: string }) {
+  const { updateProfile } = useProfiles()
+  const [world, setWorld] = useState<StoryWorld | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
 
   useEffect(() => {
-    getStoryWorld(CHILD_ID).then(setWorld).catch(() => {})
-  }, [])
+    setLoading(true)
+    getStoryWorld(childId)
+      .then(setWorld)
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [childId])
 
   const save = async () => {
     if (!world) return
     setSaving(true)
     try {
-      await putStoryWorld(CHILD_ID, world)
+      await putStoryWorld(childId, world)
+      // Keep the local roster's world in sync so it survives backend restarts.
+      updateProfile(childId, { world })
       setMsg('Saved!')
     } catch {
-      setMsg('Save failed.')
+      setMsg('Save failed — please try again.')
     } finally {
       setSaving(false)
-      setTimeout(() => setMsg(''), 2500)
+      setTimeout(() => setMsg(''), 2800)
     }
   }
 
-  if (!world) return <p className="text-moon-500 text-sm">Loading…</p>
+  if (loading) return <p className="text-ink-100 text-sm">Loading…</p>
+  if (!world) return <p className="text-ink-100 text-sm">No story world available.</p>
 
-  const updateWorld = (field: keyof StoryWorld, value: unknown) =>
-    setWorld(w => w ? { ...w, [field]: value } as StoryWorld : w)
+  const updateWorld = <K extends keyof StoryWorld>(field: K, value: StoryWorld[K]) =>
+    setWorld(w => (w ? { ...w, [field]: value } : w))
+
+  const setChar = (ci: number, patch: Partial<StoryWorld['recurring_characters'][number]>) =>
+    updateWorld(
+      'recurring_characters',
+      world.recurring_characters.map((c, j) => (j === ci ? { ...c, ...patch } : c)),
+    )
 
   return (
-    <div>
-      <SectionCard title="Story universe">
-        <div className="space-y-4">
-          <div>
-            <Label>Recurring setting</Label>
-            <Input value={world.recurring_setting} onChange={v => updateWorld('recurring_setting', v)} placeholder="Moonberry Forest" />
-          </div>
-          <div>
-            <Label>Past themes (story arcs)</Label>
-            <TagList
-              tags={world.past_themes}
-              onRemove={i => updateWorld('past_themes', world.past_themes.filter((_, j) => j !== i))}
-              onAdd={v => updateWorld('past_themes', [...world.past_themes, v])}
-              placeholder="fear of the dark…"
-            />
-          </div>
-          <div>
-            <Label>Successful rituals</Label>
-            <TagList
-              tags={world.successful_rituals}
-              onRemove={i => updateWorld('successful_rituals', world.successful_rituals.filter((_, j) => j !== i))}
-              onAdd={v => updateWorld('successful_rituals', [...world.successful_rituals, v])}
-              placeholder="three moon breaths…"
-            />
-          </div>
+    <div className="space-y-5">
+      <Card>
+        <SectionHeader
+          title="Story universe"
+          eyebrow="Memory"
+          description="The recurring world Lullow returns to every night."
+          className="mb-5"
+        />
+        <div className="space-y-5">
+          <TextField
+            label="Recurring setting"
+            value={world.recurring_setting}
+            onChange={e => updateWorld('recurring_setting', e.target.value)}
+            placeholder="Moonberry Forest"
+          />
+          <ChipInput
+            label="Past themes (story arcs)"
+            values={world.past_themes}
+            onChange={v => updateWorld('past_themes', v)}
+            placeholder="fear of the dark…"
+            tone="sage"
+          />
+          <ChipInput
+            label="Successful rituals"
+            values={world.successful_rituals}
+            onChange={v => updateWorld('successful_rituals', v)}
+            placeholder="three moon breaths…"
+            tone="sage"
+          />
         </div>
-      </SectionCard>
+      </Card>
 
-      <SectionCard title="Recurring characters">
+      <Card>
+        <SectionHeader title="Recurring characters" eyebrow="Story friends" className="mb-5" />
         {world.recurring_characters.length === 0 && (
-          <p className="text-night-500 text-sm mb-4">No characters yet.</p>
+          <p className="text-ink-50 text-sm mb-4">No story friends yet.</p>
         )}
-        {world.recurring_characters.map((char, ci) => (
-          <div key={ci} className="border border-night-700/40 rounded-2xl p-4 mb-3">
-            <div className="flex justify-between items-start mb-3">
-              <div className="flex items-center gap-3">
-                {/* Character reference image — displayed when backend provides one (P2-3) */}
-                {char.reference_image_url ? (
-                  <img
-                    src={char.reference_image_url}
-                    alt={`${char.name || 'Character'} reference`}
-                    className="w-10 h-10 rounded-xl object-cover border border-night-600/60 shrink-0"
-                  />
-                ) : (
-                  <div
-                    className="w-10 h-10 rounded-xl border border-night-700/50 bg-night-800/50 flex items-center justify-center shrink-0"
-                    title="No reference image yet"
-                  >
-                    <span className="text-night-600 text-lg" aria-hidden="true">?</span>
-                  </div>
-                )}
-                <h4 className="text-moon-200 text-sm font-semibold">{char.name || 'New character'}</h4>
+        <div className="space-y-4">
+          {world.recurring_characters.map((char, ci) => (
+            <div key={ci} className="border border-cream-300 rounded-2xl p-4 bg-cream-100/60">
+              <div className="flex justify-between items-center mb-3">
+                <div className="flex items-center gap-3">
+                  {char.reference_image_url ? (
+                    <img
+                      src={char.reference_image_url}
+                      alt={`${char.name || 'Character'} reference`}
+                      className="w-11 h-11 rounded-2xl object-cover border border-cream-300 shrink-0"
+                    />
+                  ) : (
+                    <Avatar emoji="✨" size={44} seed={char.name || `char-${ci}`} />
+                  )}
+                  <h4 className="text-ink-400 font-display font-bold">
+                    {char.name || 'New friend'}
+                  </h4>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateWorld(
+                      'recurring_characters',
+                      world.recurring_characters.filter((_, j) => j !== ci),
+                    )
+                  }
+                  className="text-ink-50 hover:text-peach-500 text-sm transition-colors"
+                >
+                  Remove
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => updateWorld('recurring_characters', world.recurring_characters.filter((_, j) => j !== ci))}
-                className="text-night-600 hover:text-glow-peach text-xs transition-colors"
-              >
-                Remove
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <div>
-                <Label>Name</Label>
-                <Input
-                  value={char.name}
-                  onChange={v => updateWorld('recurring_characters', world.recurring_characters.map((c, j) => j === ci ? { ...c, name: v } : c))}
-                />
-              </div>
-              <div>
-                <Label>Species</Label>
-                <Input
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <TextField label="Name" value={char.name} onChange={e => setChar(ci, { name: e.target.value })} />
+                <TextField
+                  label="Species"
                   value={char.species}
-                  onChange={v => updateWorld('recurring_characters', world.recurring_characters.map((c, j) => j === ci ? { ...c, species: v } : c))}
+                  onChange={e => setChar(ci, { species: e.target.value })}
                 />
               </div>
-            </div>
-            <div>
-              <Label>Traits</Label>
-              <TagList
-                tags={char.traits}
-                onRemove={ti => updateWorld('recurring_characters', world.recurring_characters.map((c, j) => j === ci ? { ...c, traits: c.traits.filter((_, k) => k !== ti) } : c))}
-                onAdd={v => updateWorld('recurring_characters', world.recurring_characters.map((c, j) => j === ci ? { ...c, traits: [...c.traits, v] } : c))}
+              <ChipInput
+                label="Traits"
+                values={char.traits}
+                onChange={v => setChar(ci, { traits: v })}
                 placeholder="gentle, curious…"
               />
             </div>
-          </div>
-        ))}
-        <button
-          type="button"
-          onClick={() => updateWorld('recurring_characters', [...world.recurring_characters, { name: '', species: '', traits: [] }])}
-          className="text-sm text-moon-500 hover:text-glow-amber border border-night-600/40 hover:border-glow-amber/30 px-4 py-2 rounded-xl transition-all duration-300"
+          ))}
+        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="mt-4"
+          onClick={() =>
+            updateWorld('recurring_characters', [
+              ...world.recurring_characters,
+              { name: '', species: '', traits: [], reference_image_url: null },
+            ])
+          }
         >
-          + Add character
-        </button>
-      </SectionCard>
+          + Add story friend
+        </Button>
+      </Card>
 
-      <SaveButton onClick={save} saving={saving} />
-      {msg && <p className={`mt-2 text-sm ${msg.startsWith('Save') && !msg.includes('failed') ? 'text-green-400' : 'text-glow-peach'}`}>{msg}</p>}
+      <div>
+        <Button onClick={save} disabled={saving}>
+          {saving ? 'Saving…' : 'Save story world'}
+        </Button>
+        <SaveMsg msg={msg} />
+      </div>
     </div>
   )
 }
 
 // ------------------------------------------------------------------ //
-// Story History tab
+// History tab — review trail + safety + revise/approve/annotate
 // ------------------------------------------------------------------ //
-
 interface ReviewTrailCardProps {
   story: Story
   onApprove: () => void
@@ -534,14 +468,15 @@ interface ReviewTrailCardProps {
 }
 
 function ReviewTrailCard({ story, onApprove, onRevise, approving, revising }: ReviewTrailCardProps) {
-  const [showRevise, setShowRevise]       = useState(false)
-  const [reviseText, setReviseText]       = useState('')
-  const [annotating, setAnnotating]       = useState(false)
-  const [annotations, setAnnotations]     = useState<AnnotationLabels>({})
-  const [annoSaving, setAnnoSaving]       = useState(false)
-  const [annoMsg, setAnnoMsg]             = useState('')
+  const [showRevise, setShowRevise] = useState(false)
+  const [reviseText, setReviseText] = useState('')
+  const [annotating, setAnnotating] = useState(false)
+  const [annotations, setAnnotations] = useState<AnnotationLabels>({})
+  const [annoSaving, setAnnoSaving] = useState(false)
+  const [annoMsg, setAnnoMsg] = useState('')
   const trail = story.review_trail
-  const eval_ = story.safety_evaluation
+  const ev = story.safety_evaluation
+  const approved = trail.final_status === 'parent_approved'
 
   const saveAnnotation = async () => {
     setAnnoSaving(true)
@@ -556,206 +491,196 @@ function ReviewTrailCard({ story, onApprove, onRevise, approving, revising }: Re
     }
   }
 
+  const trailItems: [string, string | undefined][] = [
+    ['Child said', trail.child_said ? `"${trail.child_said}"` : undefined],
+    ['Emotion target', trail.emotion_target || undefined],
+    ['Memory used', trail.memory_used.length ? trail.memory_used.join(', ') : undefined],
+    [
+      'Safety constraints',
+      trail.safety_constraints_applied.length ? trail.safety_constraints_applied.join(', ') : undefined,
+    ],
+    ['Avoided topics', trail.avoided_topics.length ? trail.avoided_topics.join(', ') : undefined],
+    ['Parent edits', trail.parent_edits.length ? trail.parent_edits.join(', ') : undefined],
+  ]
+
   return (
-    <div className="border border-night-700/40 rounded-3xl p-5 mb-4 bg-night-900/40">
-      <div className="flex justify-between items-start mb-3">
-        <div>
-          <h4 className="text-moon-200 font-semibold">{story.title}</h4>
-          <p className="text-night-400 text-xs mt-0.5">{new Date(story.created_at).toLocaleString()}</p>
+    <Card className="mb-4">
+      <div className="flex justify-between items-start mb-3 gap-3">
+        <div className="min-w-0">
+          <h4 className="text-ink-400 font-display font-bold truncate">{story.title}</h4>
+          <p className="text-ink-50 text-xs mt-0.5">{new Date(story.created_at).toLocaleString()}</p>
         </div>
-        <span className={`text-xs px-2 py-0.5 rounded-full border ${trail.final_status === 'parent_approved' ? 'border-green-500/50 text-green-400 bg-green-500/10' : 'border-night-600 text-night-400'}`}>
-          {trail.final_status === 'parent_approved' ? 'Approved' : 'Draft'}
+        <span
+          className={`shrink-0 text-xs px-2.5 py-1 rounded-full border font-medium ${
+            approved ? 'border-sage-200 text-sage-500 bg-sage-50' : 'border-cream-300 text-ink-100 bg-cream-100'
+          }`}
+        >
+          {approved ? '✓ Approved' : 'Draft'}
         </span>
       </div>
 
-      {/* Story body preview */}
-      <p className="text-moon-400 text-sm leading-relaxed line-clamp-3 mb-4 italic">
-        {story.body.slice(0, 300)}{story.body.length > 300 ? '…' : ''}
+      <p className="text-ink-100 text-sm leading-relaxed mb-4 italic">
+        {story.body.slice(0, 280)}
+        {story.body.length > 280 ? '…' : ''}
       </p>
 
       {/* Review trail */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4 text-xs">
-        {trail.child_said && (
-          <div className="bg-night-800/40 rounded-xl p-3">
-            <span className="text-night-500 block mb-1">Child said</span>
-            <span className="text-moon-400 italic">"{trail.child_said}"</span>
-          </div>
-        )}
-        {trail.emotion_target && (
-          <div className="bg-night-800/40 rounded-xl p-3">
-            <span className="text-night-500 block mb-1">Emotion target</span>
-            <span className="text-moon-400">{trail.emotion_target}</span>
-          </div>
-        )}
-        {trail.memory_used.length > 0 && (
-          <div className="bg-night-800/40 rounded-xl p-3">
-            <span className="text-night-500 block mb-1">Memory used</span>
-            <span className="text-moon-400">{trail.memory_used.join(', ')}</span>
-          </div>
-        )}
-        {trail.safety_constraints_applied.length > 0 && (
-          <div className="bg-night-800/40 rounded-xl p-3">
-            <span className="text-night-500 block mb-1">Safety constraints</span>
-            <span className="text-moon-400">{trail.safety_constraints_applied.join(', ')}</span>
-          </div>
-        )}
-        {trail.avoided_topics.length > 0 && (
-          <div className="bg-night-800/40 rounded-xl p-3">
-            <span className="text-night-500 block mb-1">Avoided topics</span>
-            <span className="text-moon-400">{trail.avoided_topics.join(', ')}</span>
-          </div>
-        )}
-        {trail.parent_edits.length > 0 && (
-          <div className="bg-night-800/40 rounded-xl p-3">
-            <span className="text-night-500 block mb-1">Parent edits</span>
-            <span className="text-moon-400">{trail.parent_edits.join(', ')}</span>
-          </div>
-        )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+        {trailItems
+          .filter(([, v]) => v)
+          .map(([k, v]) => (
+            <div key={k} className="bg-cream-100 rounded-xl p-3">
+              <span className="text-ink-50 text-xs block mb-1 font-semibold uppercase tracking-wide">
+                {k}
+              </span>
+              <span className="text-ink-300 text-sm">{v}</span>
+            </div>
+          ))}
       </div>
 
-      {/* Safety eval scores */}
+      {/* Safety eval */}
       <div className="flex flex-wrap gap-2 mb-4">
-        {[
-          { label: 'Age appropriate', val: eval_.age_appropriate },
-          { label: 'Sleep friendly',  val: eval_.sleep_friendly },
-          { label: 'Parent followed', val: eval_.parent_constraints_followed },
-          { label: 'Too scary',       val: !eval_.too_scary, invert: true },
-        ].map(({ label, val }) => (
-          <span
-            key={label}
-            className={`text-xs px-2.5 py-1 rounded-full border ${val ? 'border-green-500/40 text-green-400 bg-green-500/10' : 'border-glow-peach/40 text-glow-peach bg-glow-peach/10'}`}
-          >
-            {val ? '✓' : '!'} {label}
-          </span>
-        ))}
-        <span className="text-xs px-2.5 py-1 rounded-full border border-night-600 text-night-400">
-          warmth {(eval_.emotional_warmth * 100).toFixed(0)}%
+        <Badge ok={ev.age_appropriate}>Age appropriate</Badge>
+        <Badge ok={ev.sleep_friendly}>Sleep friendly</Badge>
+        <Badge ok={ev.parent_constraints_followed}>Parent followed</Badge>
+        <Badge ok={!ev.too_scary}>Not too scary</Badge>
+        <span className="text-xs px-2.5 py-1 rounded-full border border-cream-300 text-ink-100 bg-cream-100 font-medium">
+          warmth {(ev.emotional_warmth * 100).toFixed(0)}%
         </span>
       </div>
 
-      {/* Actions: revise + approve */}
-      <div className="flex gap-3 flex-wrap mb-4">
-        {trail.final_status !== 'parent_approved' && (
-          <button
-            type="button"
-            onClick={onApprove}
-            disabled={approving}
-            className="px-4 py-2 rounded-xl bg-green-500/10 border border-green-500/40 text-green-400 text-sm hover:bg-green-500/20 disabled:opacity-40 transition-all duration-300"
-          >
+      {/* Actions */}
+      <div className="flex gap-2 flex-wrap">
+        {!approved && (
+          <Button variant="soft" size="sm" onClick={onApprove} disabled={approving}>
             {approving ? 'Approving…' : '✓ Approve'}
-          </button>
+          </Button>
         )}
-        <button
-          type="button"
-          onClick={() => setShowRevise(v => !v)}
-          className="px-4 py-2 rounded-xl bg-night-700/50 border border-night-600/40 text-moon-400 text-sm hover:border-glow-amber/40 transition-all duration-300"
-        >
+        <Button variant="secondary" size="sm" onClick={() => setShowRevise(v => !v)}>
           ✏ Revise
-        </button>
-        <button
-          type="button"
-          onClick={() => setAnnotating(a => !a)}
-          className="px-4 py-2 rounded-xl bg-night-700/50 border border-night-600/40 text-moon-400 text-sm hover:border-glow-amber/40 transition-all duration-300"
-        >
+        </Button>
+        <Button variant="secondary" size="sm" onClick={() => setAnnotating(a => !a)}>
           🏷 Label
-        </button>
+        </Button>
       </div>
 
-      {/* Revision box — controlled by dedicated showRevise boolean (P1-5) */}
+      {/* Revision box */}
       {showRevise && (
-        <div className="mb-4">
-          <TextArea
+        <div className="mt-4">
+          <TextField
+            as="textarea"
             value={reviseText}
-            onChange={setReviseText}
+            onChange={e => setReviseText(e.target.value)}
             placeholder="e.g. make softer, remove the forest, change animal to rabbit"
             rows={2}
           />
-          <button
-            type="button"
-            onClick={() => { onRevise(reviseText); setReviseText(''); setShowRevise(false) }}
+          <Button
+            variant="soft"
+            size="sm"
+            className="mt-2"
+            onClick={() => {
+              onRevise(reviseText)
+              setReviseText('')
+              setShowRevise(false)
+            }}
             disabled={!reviseText.trim() || revising}
-            className="mt-2 px-4 py-2 rounded-xl bg-night-700/50 border border-night-500/50 text-moon-300 text-sm disabled:opacity-40 hover:border-glow-amber/40 transition-all duration-300"
           >
             {revising ? 'Revising…' : 'Submit revision →'}
-          </button>
+          </Button>
         </div>
       )}
 
       {/* Annotation (Terac) */}
       {annotating && (
-        <div className="border-t border-night-700/40 pt-4 mt-2">
-          <p className="text-night-400 text-xs mb-3 uppercase tracking-widest">Story labels (Terac)</p>
+        <div className="border-t border-cream-300 pt-4 mt-4">
+          <p className="text-ink-50 text-xs mb-3 font-semibold uppercase tracking-widest">
+            Story labels (Terac)
+          </p>
           <div className="grid grid-cols-2 gap-2 mb-3">
-            {([
-              ['age_appropriate',  'Age appropriate'],
-              ['too_scary',        'Too scary'],
-              ['emotionally_warm', 'Emotionally warm'],
-              ['moral_clarity',    'Moral clarity'],
-              ['parent_approval',  'Parent approval'],
-              ['rewrite_needed',   'Rewrite needed'],
-            ] as [keyof AnnotationLabels, string][]).map(([key, label]) => (
+            {(
+              [
+                ['age_appropriate', 'Age appropriate'],
+                ['too_scary', 'Too scary'],
+                ['emotionally_warm', 'Emotionally warm'],
+                ['moral_clarity', 'Moral clarity'],
+                ['parent_approval', 'Parent approval'],
+                ['rewrite_needed', 'Rewrite needed'],
+              ] as [keyof AnnotationLabels, string][]
+            ).map(([key, label]) => (
               <label key={key} className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={annotations[key] === true}
                   onChange={e => setAnnotations(a => ({ ...a, [key]: e.target.checked ? true : null }))}
-                  className="rounded accent-glow-amber"
+                  className="w-4 h-4 rounded accent-lavender-500"
                 />
-                <span className="text-moon-400 text-xs">{label}</span>
+                <span className="text-ink-300 text-sm">{label}</span>
               </label>
             ))}
           </div>
-          <button
-            type="button"
-            onClick={saveAnnotation}
-            disabled={annoSaving}
-            className="px-4 py-2 rounded-xl bg-night-700/50 border border-night-600/40 text-moon-400 text-sm disabled:opacity-40 hover:border-glow-amber/40 transition-all duration-300"
-          >
+          <Button variant="secondary" size="sm" onClick={saveAnnotation} disabled={annoSaving}>
             {annoSaving ? 'Saving…' : 'Save labels'}
-          </button>
-          {annoMsg && <span className="ml-3 text-xs text-green-400">{annoMsg}</span>}
+          </Button>
+          {annoMsg && <span className="ml-3 text-xs text-sage-500 font-medium">{annoMsg}</span>}
         </div>
       )}
-    </div>
+    </Card>
   )
 }
 
-function HistoryTab() {
-  const [stories, setStories]           = useState<Story[]>([])
-  const [loading, setLoading]           = useState(true)
-  const [approvingId, setApprovingId]   = useState<string | null>(null)
-  const [revisingId, setRevisingId]     = useState<string | null>(null)
+function HistoryTab({ childId }: { childId: string }) {
+  const [stories, setStories] = useState<Story[]>([])
+  const [loading, setLoading] = useState(true)
+  const [approvingId, setApprovingId] = useState<string | null>(null)
+  const [revisingId, setRevisingId] = useState<string | null>(null)
 
   useEffect(() => {
-    getStoryHistory(CHILD_ID)
+    setLoading(true)
+    getStoryHistory(childId)
       .then(setStories)
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [])
+  }, [childId])
 
   const approve = useCallback(async (story_id: string) => {
     setApprovingId(story_id)
     try {
       const updated = await postApproveStory(story_id)
-      setStories(ss => ss.map(s => s.story_id === story_id ? updated : s))
-    } catch {}
-    finally { setApprovingId(null) }
+      setStories(ss => ss.map(s => (s.story_id === story_id ? updated : s)))
+    } catch {
+      /* leave as-is */
+    } finally {
+      setApprovingId(null)
+    }
   }, [])
 
   const revise = useCallback(async (story: Story, instruction: string) => {
     setRevisingId(story.story_id)
     try {
-      const result = await postReviseStory({ story_id: story.story_id, child_id: story.child_id, instruction })
-      // Replace in list only if the backend returned a non-null story
+      const result = await postReviseStory({
+        story_id: story.story_id,
+        child_id: story.child_id,
+        instruction,
+      })
       if (result.story) {
-        setStories(ss => ss.map(s => s.story_id === story.story_id ? result.story! : s))
+        setStories(ss => ss.map(s => (s.story_id === story.story_id ? result.story! : s)))
       }
-    } catch {}
-    finally { setRevisingId(null) }
+    } catch {
+      /* leave as-is */
+    } finally {
+      setRevisingId(null)
+    }
   }, [])
 
-  if (loading) return <p className="text-moon-500 text-sm">Loading stories…</p>
-  if (stories.length === 0) return <p className="text-moon-500 text-sm">No stories yet. Have Leo tell Lullow how he feels tonight!</p>
+  if (loading) return <p className="text-ink-100 text-sm">Loading stories…</p>
+  if (stories.length === 0)
+    return (
+      <Card>
+        <p className="text-ink-100 text-sm">
+          No stories yet. Have your child tell Lullow how they feel tonight!
+        </p>
+      </Card>
+    )
 
   return (
     <div>
@@ -774,87 +699,101 @@ function HistoryTab() {
 }
 
 // ------------------------------------------------------------------ //
-// Growth Journal tab
+// Journal tab
 // ------------------------------------------------------------------ //
-function JournalTab() {
+function JournalTab({ childId }: { childId: string }) {
   const [journal, setJournal] = useState<GrowthJournal | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    getJournal(CHILD_ID)
+    setLoading(true)
+    getJournal(childId)
       .then(setJournal)
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [])
+  }, [childId])
 
-  if (loading) return <p className="text-moon-500 text-sm">Loading journal…</p>
-  if (!journal) return <p className="text-moon-500 text-sm">No journal data yet.</p>
+  if (loading) return <p className="text-ink-100 text-sm">Loading journal…</p>
+  if (!journal) return <p className="text-ink-100 text-sm">No journal data yet.</p>
+
+  const maxCount = Math.max(1, ...Object.values(journal.emotion_counts))
 
   return (
-    <div>
+    <div className="space-y-5">
       {journal.reflection && (
-        <SectionCard title="Parent reflection">
-          <p className="text-moon-300 font-light leading-relaxed italic">"{journal.reflection}"</p>
-        </SectionCard>
+        <Card className="bg-gradient-to-br from-lavender-50 to-peach-50 border-lavender-200">
+          <SectionHeader title="Parent reflection" eyebrow="This week" className="mb-3" />
+          <p className="text-ink-300 leading-relaxed italic">"{journal.reflection}"</p>
+        </Card>
       )}
 
-      <SectionCard title={`Emotions this ${journal.period.replace('_', ' ')}`}>
+      <Card>
+        <SectionHeader title={`Emotions ${journal.period.replace('_', ' ')}`} className="mb-5" />
         {Object.keys(journal.emotion_counts).length === 0 ? (
-          <p className="text-night-500 text-sm">No emotion data yet.</p>
+          <p className="text-ink-50 text-sm">No emotion data yet.</p>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {Object.entries(journal.emotion_counts)
               .sort(([, a], [, b]) => b - a)
               .map(([emotion, count]) => (
                 <div key={emotion} className="flex items-center gap-3">
-                  <span className="text-moon-400 text-sm w-28 capitalize">{emotion.replace('_', ' ')}</span>
-                  <div className="flex-1 h-2 rounded-full bg-night-700/60">
+                  <span className="text-ink-200 text-sm w-28 capitalize font-medium">
+                    {emotion.replace('_', ' ')}
+                  </span>
+                  <div className="flex-1 h-2.5 rounded-full bg-cream-200">
                     <div
-                      className="h-2 rounded-full bg-glow-amber/60 transition-all duration-600"
-                      style={{ width: `${Math.min((count / Math.max(...Object.values(journal.emotion_counts))) * 100, 100)}%` }}
+                      className="h-2.5 rounded-full gradient-lavender transition-all duration-600"
+                      style={{ width: `${Math.min((count / maxCount) * 100, 100)}%` }}
                     />
                   </div>
-                  <span className="text-night-400 text-xs w-6 text-right">{count}×</span>
+                  <span className="text-ink-50 text-xs w-8 text-right">{count}×</span>
                 </div>
               ))}
           </div>
         )}
-      </SectionCard>
+      </Card>
 
       {journal.helpful_elements.length > 0 && (
-        <SectionCard title="What helped most">
+        <Card>
+          <SectionHeader title="What helped most" className="mb-4" />
           <div className="flex flex-wrap gap-2">
             {journal.helpful_elements.map((el, i) => (
-              <span key={i} className="px-3 py-1.5 rounded-2xl bg-night-700/50 border border-night-600/40 text-moon-300 text-sm">
+              <span
+                key={i}
+                className="px-3 py-1.5 rounded-full bg-sage-100 border border-sage-200 text-sage-500 text-sm font-medium"
+              >
                 {el}
               </span>
             ))}
           </div>
-        </SectionCard>
+        </Card>
       )}
 
       {journal.entries.length > 0 && (
-        <SectionCard title="Story entries">
-          <div className="space-y-2">
+        <Card>
+          <SectionHeader title="Story entries" className="mb-4" />
+          <div className="divide-y divide-cream-300">
             {journal.entries.map(entry => (
-              <div key={entry.story_id} className="flex items-center gap-3 text-sm py-2 border-b border-night-700/30 last:border-0">
-                <span className="text-night-500 text-xs w-24">{new Date(entry.date).toLocaleDateString()}</span>
-                <span className="text-moon-300 flex-1">{entry.title}</span>
-                <span className="text-night-400 text-xs capitalize">{entry.emotion.replace('_', ' ')}</span>
+              <div key={entry.story_id} className="flex items-center gap-3 text-sm py-2.5">
+                <span className="text-ink-50 text-xs w-24">
+                  {new Date(entry.date).toLocaleDateString()}
+                </span>
+                <span className="text-ink-300 flex-1 font-medium">{entry.title}</span>
+                <span className="text-ink-100 text-xs capitalize">
+                  {entry.emotion.replace('_', ' ')}
+                </span>
               </div>
             ))}
           </div>
-        </SectionCard>
+        </Card>
       )}
     </div>
   )
 }
 
 // ------------------------------------------------------------------ //
-// Evals tab (Arize) — styled dashboard, mirrors ReviewTrailCard badges
+// Evals tab (Arize)
 // ------------------------------------------------------------------ //
-
-/** Subset of SafetyEvaluation fields expected in each eval record */
 interface EvalRecord {
   story_id?: string
   title?: string
@@ -871,71 +810,50 @@ interface EvalRecord {
 
 function EvalRow({ ev }: { ev: EvalRecord }) {
   const badges = [
-    { label: 'Passed',         val: ev.passed          ?? false },
-    { label: 'Age appropriate', val: ev.age_appropriate ?? true  },
-    { label: 'Sleep friendly',  val: ev.sleep_friendly  ?? true  },
+    { label: 'Passed', val: ev.passed ?? false },
+    { label: 'Age appropriate', val: ev.age_appropriate ?? true },
+    { label: 'Sleep friendly', val: ev.sleep_friendly ?? true },
     { label: 'Parent followed', val: ev.parent_constraints_followed ?? true },
-    // "too_scary" is a failure flag — badge is green when NOT scary
-    { label: 'Too scary',       val: !(ev.too_scary ?? false) },
+    { label: 'Not too scary', val: !(ev.too_scary ?? false) },
   ]
 
   return (
-    <div className="border border-night-700/40 rounded-2xl p-4 bg-night-900/40">
+    <div className="border border-cream-300 rounded-2xl p-4 bg-cream-100/60">
       <div className="flex items-start justify-between mb-3 gap-4">
         <div className="min-w-0">
-          <p className="text-moon-200 text-sm font-semibold truncate">
+          <p className="text-ink-400 text-sm font-display font-bold truncate">
             {ev.title ?? ev.story_id ?? 'Story'}
           </p>
           {ev.created_at && (
-            <p className="text-night-500 text-xs mt-0.5">
-              {new Date(ev.created_at).toLocaleString()}
-            </p>
+            <p className="text-ink-50 text-xs mt-0.5">{new Date(ev.created_at).toLocaleString()}</p>
           )}
         </div>
-        {/* Passed / Failed chip — mirrors the large badge in ReviewTrailCard */}
         <span
           className={`shrink-0 text-xs px-2.5 py-1 rounded-full border font-medium ${
-            ev.passed
-              ? 'border-green-500/40 text-green-400 bg-green-500/10'
-              : 'border-glow-peach/40 text-glow-peach bg-glow-peach/10'
+            ev.passed ? 'border-sage-200 text-sage-500 bg-sage-50' : 'border-peach-200 text-peach-500 bg-peach-50'
           }`}
         >
           {ev.passed ? '✓ Passed' : '! Failed'}
         </span>
       </div>
 
-      {/* Safety badge row — same style as ReviewTrailCard ~599-616 */}
-      <div className="flex flex-wrap gap-2 mb-3">
+      <div className="flex flex-wrap gap-2 mb-2">
         {badges.map(({ label, val }) => (
-          <span
-            key={label}
-            className={`text-xs px-2.5 py-1 rounded-full border ${
-              val
-                ? 'border-green-500/40 text-green-400 bg-green-500/10'
-                : 'border-glow-peach/40 text-glow-peach bg-glow-peach/10'
-            }`}
-          >
-            {val ? '✓' : '!'} {label}
-          </span>
+          <Badge key={label} ok={val}>
+            {label}
+          </Badge>
         ))}
         {ev.emotional_warmth !== undefined && (
-          <span className="text-xs px-2.5 py-1 rounded-full border border-night-600 text-night-400">
+          <span className="text-xs px-2.5 py-1 rounded-full border border-cream-300 text-ink-100 bg-cream-100 font-medium">
             warmth {(ev.emotional_warmth * 100).toFixed(0)}%
           </span>
         )}
       </div>
 
-      {/* Blocked topics */}
       {ev.blocked_topic_hits && ev.blocked_topic_hits.length > 0 && (
-        <p className="text-glow-peach text-xs mb-2">
-          Blocked hits: {ev.blocked_topic_hits.join(', ')}
-        </p>
+        <p className="text-peach-500 text-xs mb-1">Blocked hits: {ev.blocked_topic_hits.join(', ')}</p>
       )}
-
-      {/* Notes */}
-      {ev.notes && (
-        <p className="text-night-400 text-xs leading-relaxed italic">{ev.notes}</p>
-      )}
+      {ev.notes && <p className="text-ink-100 text-xs leading-relaxed italic">{ev.notes}</p>}
     </div>
   )
 }
@@ -951,42 +869,42 @@ function EvalsTab() {
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) return <p className="text-moon-500 text-sm">Loading evaluations…</p>
+  if (loading) return <p className="text-ink-100 text-sm">Loading evaluations…</p>
 
-  const passed  = evals.filter(e => e.passed)
-  const failed  = evals.filter(e => !e.passed)
+  const passed = evals.filter(e => e.passed)
+  const failed = evals.filter(e => !e.passed)
 
   return (
-    <div>
-      {/* Summary header */}
+    <div className="space-y-5">
       {evals.length > 0 && (
-        <div className="flex gap-4 mb-6">
-          <div className="flex-1 bg-night-900/50 border border-night-700/40 rounded-2xl p-4 text-center">
-            <p className="text-2xl font-light text-green-400">{passed.length}</p>
-            <p className="text-night-400 text-xs mt-1 uppercase tracking-widest">Passed</p>
-          </div>
-          <div className="flex-1 bg-night-900/50 border border-night-700/40 rounded-2xl p-4 text-center">
-            <p className="text-2xl font-light text-glow-peach">{failed.length}</p>
-            <p className="text-night-400 text-xs mt-1 uppercase tracking-widest">Failed</p>
-          </div>
-          <div className="flex-1 bg-night-900/50 border border-night-700/40 rounded-2xl p-4 text-center">
-            <p className="text-2xl font-light text-moon-200">{evals.length}</p>
-            <p className="text-night-400 text-xs mt-1 uppercase tracking-widest">Total</p>
-          </div>
+        <div className="grid grid-cols-3 gap-4">
+          {[
+            { n: passed.length, label: 'Passed', color: 'text-sage-500' },
+            { n: failed.length, label: 'Failed', color: 'text-peach-500' },
+            { n: evals.length, label: 'Total', color: 'text-ink-400' },
+          ].map(s => (
+            <Card key={s.label} className="text-center">
+              <p className={`text-3xl font-display font-bold ${s.color}`}>{s.n}</p>
+              <p className="text-ink-50 text-xs mt-1 uppercase tracking-widest">{s.label}</p>
+            </Card>
+          ))}
         </div>
       )}
 
-      <SectionCard title="Recent safety evaluations (Arize)">
+      <Card>
+        <SectionHeader title="Recent safety evaluations" eyebrow="Arize" className="mb-5" />
         {evals.length === 0 ? (
-          <p className="text-night-500 text-sm">No evaluations yet.</p>
+          <p className="text-ink-50 text-sm">No evaluations yet.</p>
         ) : (
           <div className="space-y-3">
             {evals.map((ev, i) => (
-              <EvalRow key={ev.story_id ?? i} ev={ev} />
+              // Index-qualified key: eval records can repeat a story_id (a story
+              // re-evaluated across runs), so story_id alone is not unique.
+              <EvalRow key={`${ev.story_id ?? 'eval'}-${i}`} ev={ev} />
             ))}
           </div>
         )}
-      </SectionCard>
+      </Card>
     </div>
   )
 }
@@ -994,86 +912,105 @@ function EvalsTab() {
 // ------------------------------------------------------------------ //
 // Main ParentDashboard
 // ------------------------------------------------------------------ //
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'profile', label: 'Profile' },
-  { id: 'safety',  label: 'Safety' },
-  { id: 'world',   label: 'Story World' },
-  { id: 'history', label: 'History' },
-  { id: 'journal', label: 'Journal' },
-  { id: 'evals',   label: 'Evals' },
+const TABS: { id: Tab; label: string; icon: string }[] = [
+  { id: 'profile', label: 'Profile', icon: '👤' },
+  { id: 'safety', label: 'Safety', icon: '🛡️' },
+  { id: 'world', label: 'Story World', icon: '🌳' },
+  { id: 'history', label: 'History', icon: '📖' },
+  { id: 'journal', label: 'Journal', icon: '🌱' },
+  { id: 'evals', label: 'Evals', icon: '📊' },
 ]
 
 export default function ParentDashboard() {
+  const { activeProfile, activeChildId } = useProfiles()
+  const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('profile')
 
+  const childId = activeChildId ?? ''
+
   return (
-    <div
-      className="min-h-screen"
-      style={{
-        background: 'radial-gradient(ellipse at 50% 0%, #1a1530 0%, #0e0e20 50%, #07091e 100%)',
-      }}
-    >
+    <div className="relative min-h-screen">
+      <WarmBackground />
+
       {/* Header */}
-      <header className="border-b border-night-700/50 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl" aria-hidden="true">🌙</span>
-          <div>
-            <h1 className="text-moon-200 text-xl font-light tracking-wide">Lullow</h1>
-            <p className="text-night-500 text-xs">Parent dashboard</p>
+      <header className="sticky top-0 z-30 backdrop-blur-md bg-cream-100/80 border-b border-cream-300">
+        <div className="max-w-5xl mx-auto px-5 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Brand size="sm" />
+            <span className="hidden sm:inline text-ink-50 text-sm">· Parent dashboard</span>
+          </div>
+          <div className="flex items-center gap-3">
+            {activeProfile && <ProfileSwitcher destination="/parent" />}
+            <Button variant="secondary" size="sm" onClick={() => navigate('/child')}>
+              ← Bedtime mode
+            </Button>
           </div>
         </div>
-        <Link
-          to="/"
-          className="text-sm text-night-500 hover:text-moon-400 border border-night-700/50 hover:border-night-600 px-4 py-2 rounded-xl transition-all duration-300"
-        >
-          ← Bedtime mode
-        </Link>
       </header>
 
-      <div className="flex max-w-4xl mx-auto">
-        {/* Sidebar tabs (desktop) */}
-        <aside className="hidden sm:flex flex-col w-44 shrink-0 pt-6 px-4 gap-1">
+      <div className="max-w-5xl mx-auto flex flex-col sm:flex-row">
+        {/* Sidebar (desktop) */}
+        <aside className="hidden sm:flex flex-col w-52 shrink-0 pt-8 px-4 gap-1">
+          {activeProfile && (
+            <div className="flex items-center gap-3 px-3 pb-5 mb-2 border-b border-cream-300">
+              <Avatar emoji={activeProfile.avatar} size={40} seed={activeProfile.profile.child_id} />
+              <div className="min-w-0">
+                <p className="text-ink-400 text-sm font-display font-bold truncate">
+                  {activeProfile.profile.name}
+                </p>
+                <p className="text-ink-50 text-xs">Age {activeProfile.profile.age}</p>
+              </div>
+            </div>
+          )}
           {TABS.map(t => (
             <button
               key={t.id}
               type="button"
               onClick={() => setTab(t.id)}
-              className={`
-                text-left px-4 py-2.5 rounded-xl text-sm font-light
-                transition-all duration-300
-                ${tab === t.id
-                  ? 'bg-night-700/60 border border-night-600/60 text-glow-amber'
-                  : 'text-night-400 hover:text-moon-400 hover:bg-night-800/40'
-                }
-              `}
+              className={`flex items-center gap-2.5 text-left px-4 py-2.5 rounded-2xl text-sm font-medium transition-all duration-200 ${
+                tab === t.id
+                  ? 'bg-lavender-100 text-lavender-700 shadow-soft'
+                  : 'text-ink-200 hover:bg-cream-200'
+              }`}
             >
+              <span aria-hidden="true">{t.icon}</span>
               {t.label}
             </button>
           ))}
         </aside>
 
         {/* Mobile tab row */}
-        <div className="sm:hidden flex overflow-x-auto gap-2 px-4 pt-4 pb-2 border-b border-night-700/40">
+        <div className="sm:hidden flex overflow-x-auto gap-2 px-4 pt-4 pb-1">
           {TABS.map(t => (
             <button
               key={t.id}
               type="button"
               onClick={() => setTab(t.id)}
-              className={`shrink-0 px-4 py-2 rounded-xl text-xs font-light transition-all duration-300 ${tab === t.id ? 'bg-night-700/60 border border-night-600/60 text-glow-amber' : 'text-night-400 hover:text-moon-400'}`}
+              className={`shrink-0 px-4 py-2 rounded-2xl text-sm font-medium transition-all duration-200 ${
+                tab === t.id
+                  ? 'bg-lavender-100 text-lavender-700 shadow-soft'
+                  : 'text-ink-200 bg-cream-50 border border-cream-300'
+              }`}
             >
-              {t.label}
+              {t.icon} {t.label}
             </button>
           ))}
         </div>
 
         {/* Main content */}
-        <main className="flex-1 px-4 sm:px-8 py-6 max-w-2xl">
-          {tab === 'profile' && <ProfileTab />}
-          {tab === 'safety'  && <SafetyTab />}
-          {tab === 'world'   && <StoryWorldTab />}
-          {tab === 'history' && <HistoryTab />}
-          {tab === 'journal' && <JournalTab />}
-          {tab === 'evals'   && <EvalsTab />}
+        <main className="flex-1 px-4 sm:px-8 py-6 max-w-3xl">
+          {!activeChildId ? (
+            <p className="text-ink-100">No active profile selected.</p>
+          ) : (
+            <div className="animate-fade-in" key={tab}>
+              {tab === 'profile' && <ProfileTab childId={childId} />}
+              {tab === 'safety' && <SafetyTab childId={childId} />}
+              {tab === 'world' && <StoryWorldTab childId={childId} />}
+              {tab === 'history' && <HistoryTab childId={childId} />}
+              {tab === 'journal' && <JournalTab childId={childId} />}
+              {tab === 'evals' && <EvalsTab />}
+            </div>
+          )}
         </main>
       </div>
     </div>
