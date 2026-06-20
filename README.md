@@ -1,6 +1,16 @@
+<div align="center">
+
+<img src="assets/logo.png" alt="Lullow logo" width="180" />
+
+<br/>
+
+<img src="assets/banner.png" alt="Lullow — Light & Lore" width="100%" />
+
 # Lullow 🌙
 
 **A gentle glow for big feelings at bedtime.**
+
+</div>
 
 Lullow is a **voice-first bedtime comfort companion for children ages 3–8**. It
 listens to a child's nighttime feelings, turns them into a gentle personalized
