@@ -1,9 +1,5 @@
 <div align="center">
 
-<img src="assets/logo.png" alt="Lullow logo" width="180" />
-
-<br/>
-
 <img src="assets/banner.png" alt="Lullow — Light & Lore" width="100%" />
 
 # Lullow 🌙
