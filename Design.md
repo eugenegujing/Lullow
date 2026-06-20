@@ -45,6 +45,22 @@ Two surfaces, two tones:
 - **Child mode** — immersive, almost no chrome, voice-first, minimal text, one focus per screen.
 - **Parent mode** — same palette, calmer card-based dashboard; information-rich but soft and trustworthy.
 
+### Platform — web-first & responsive
+
+Lullow ships **as a web app first** (the existing React + Vite + TS + Tailwind
+codebase), then installs as a PWA for the phone later. Design **responsively**:
+
+| Viewport | Child mode | Parent mode |
+|---|---|---|
+| **Mobile** (~390px) | Full-screen, single column, voice-first | Stacked cards |
+| **Tablet** (~768px) | Centered column over ambient sky | 2-column |
+| **Desktop** (~1440px) | Interactive content in a **centered ~480px column** over a **full-bleed** night sky; the story picture-book may go full-bleed | Calm **multi-column** dashboard |
+
+Principle: the **ambient night sky is full-bleed at every size**, while
+**interactive controls stay in a comfortable centered column** so the child
+experience never feels stretched on a big screen. The parent dashboard is the one
+place that genuinely uses desktop width.
+
 ---
 
 ## 3. Design tokens
@@ -222,40 +238,50 @@ Stitch rewards **specific, structured, consistent** prompts. The formula:
 > ⚠️ Stitch output is **static** — it won't wire your API or state. It designs the
 > rooms; your backend + `frontend/src/api.ts` are the wiring and stay untouched.
 
-### 8.1 Master Prompt (paste this first, every time)
+### 8.1 Master Prompt (web-first — paste this first, every time)
 
 ```
-ROLE: You are designing the UI for "Lullow," a premium, voice-first bedtime
-comfort app for children ages 3–8, used at the bedside on a phone — held by a
-sleepy child or a tired parent in a dark room.
+ROLE: Senior product designer crafting the UI for "Lullow," a premium, voice-first
+bedtime comfort WEB APP for children ages 3–8. It runs in the browser and is used at
+the bedside, in a dark room, by a sleepy child or a tired parent. Aim for Apple
+Design Award / top sleep-wellness-app polish.
 
-PLATFORM: Mobile-first, portrait, full-screen (PWA). Design for a 390 × 844 phone.
+PLATFORM: Responsive web application. Design BOTH a desktop layout (1440px wide) and a
+mobile layout (390px wide). In child mode, keep interactive content in a centered,
+app-like column (max ~480px) over a FULL-BLEED ambient night sky, even on desktop; the
+parent dashboard expands into a calm multi-column layout on desktop and stacks on mobile.
 
-EMOTIONAL GOAL: It must feel like a $50M sleep-wellness app at night — safe, soft,
-sleepy, warm, and loved. Calm and low-stimulation; never clinical, techy, gamified,
-or "app-like." Restraint is the aesthetic. If an element wouldn't help a 4-year-old
-fall asleep, leave it out.
+FEELING: Calm/Headspace-at-night meets a Studio Ghibli storybook. Safe, soft, sleepy,
+warm, loved. Low-stimulation and restrained — never clinical, techy, gamified, or busy.
+The litmus test for every element: "would this help a 4-year-old fall asleep?"
 
-VISUAL STYLE:
-- Dark theme ONLY. Never pure white, never pure black, never harsh contrast.
-- Background: deep night-sky vertical gradient from #07091e (top) to #0d1340 (mid)
-  to #1c2675 (bottom), with a faint twinkling star field and one soft glowing moon.
-- Warm moonlight accents: amber glow #f0a830 (primary), peach #e88060, cream #f8f0dc;
-  cool star accent #8898cc.
-- All text in warm off-white #ede4d0 with a faint glow — never #ffffff, never gray.
-- Very rounded shapes (corner radius 32–40px). Soft outer glows instead of hard
-  drop shadows. Generous spacing and lots of negative space.
-- Typography: a warm storybook serif for headings and narration; a soft rounded
-  sans for small labels and buttons. Large, legible, gentle.
+ART DIRECTION:
+- Dark theme ONLY — never pure white (#ffffff) or pure black, never harsh contrast.
+- Background: deep night-sky vertical gradient #07091e -> #0d1340 -> #1c2675, with soft
+  volumetric moonlight, a faint twinkling star field, gentle gradient-mesh glows, and a
+  whisper of film grain. One soft glowing moon as the light source.
+- Accents: amber glow #f0a830 (primary action/light), peach #e88060 (warmth),
+  cream #f8f0dc (brightest core), star indigo #8898cc.
+- Text: warm off-white #ede4d0 with a faint glow — never white, never gray.
+- Painterly, hand-drawn storybook warmth. Very rounded shapes (32–40px radius), soft
+  outer glows instead of hard shadows, generous negative space.
+- Type: warm storybook serif for headings/narration; soft rounded sans for labels.
+  Large, gentle, legible.
 
-LAYOUT RULES:
-- One primary focus per screen. Minimal text in child mode.
-- Oversized touch targets (min 72px) for small fingers and tired parents in the dark.
-- A persistent, gentle "find a grown-up" help affordance on every child screen.
+LAYOUT: One hero focal element per screen, composed with breathing room. Oversized
+click/touch targets (≥56px desktop, ≥72px mobile). A persistent, gentle "find a
+grown-up" help affordance on every child screen.
 
-DO NOT use: bright or white backgrounds, neon or high-saturation colors, hard drop
-shadows, dense layouts, tiny text, sharp corners, busy decoration, progress bars/
-scrubbers, badges or gamification, or any sense of urgency or stimulation.
+COPY: Real bedtime tone, like a loving grown-up whispering — e.g. "Good evening, little
+one. I'm right here." Never lorem ipsum, never assistant/therapy phrasing.
+
+DO NOT: bright/white backgrounds, neon or high-saturation color, hard drop shadows,
+dense layouts, tiny text, sharp corners, progress scrubbers, badges/gamification, icons
+that imply urgency, or any motion/energy that stimulates rather than soothes.
+
+NOW DESIGN: <append one screen line — e.g.> the WELCOME screen — a sleepy fox curled
+under a big glowing moon, one large central glowing microphone button, a tiny "for
+grown-ups" link in the corner, and a small "find a grown-up" help button.
 ```
 
 ### 8.2 Multi-screen flow prompt (generate the child journey at once)
@@ -278,6 +304,7 @@ Generate a 5-screen connected flow for the child bedtime journey:
 5. BREATHING RITUAL — a single glowing moon-circle mid-expansion for slow 4-7-8
    breathing, with "Breathe in… and out…", ending on a dimmed "Sweet dreams" state.
 Keep all five visually consistent, same palette and type, calm and low-stimulation.
+Provide a desktop (1440px) and a mobile (390px) layout for each.
 ```
 
 ### 8.3 Per-screen prompts (append after the Master Prompt)
@@ -343,7 +370,7 @@ Purpose: [one line].
 Layout: [primary focus + arrangement].
 Key elements: [list, with exact copy in quotes].
 States: [idle / active / etc. if relevant].
-Keep it calm, low-stimulation, on-palette, mobile portrait.
+Keep it calm, low-stimulation, on-palette, responsive (desktop 1440 + mobile 390).
 ```
 
 ### 8.5 Prompting do / don't
@@ -351,7 +378,7 @@ Keep it calm, low-stimulation, on-palette, mobile portrait.
 **Do**
 - Always lead with the Master Prompt for consistency.
 - Give **exact hexes** and **real copy** (kids' bedtime tone), not lorem ipsum.
-- Specify "mobile portrait, full-screen, dark theme" every time.
+- Specify the target viewports (desktop 1440 + mobile 390) and dark theme every time.
 - Name the one focal element per screen.
 - Iterate in small edits ("make the moon larger and dimmer," "more negative space").
 
@@ -380,4 +407,5 @@ A screen is "cracked, but calm" when:
 - [ ] One clear focus; minimal text; touch targets ≥72px (child mode).
 - [ ] Motion is slow and breathing; respects `prefers-reduced-motion`; pauses under narration.
 - [ ] "Find a grown-up" help is present on every child screen.
+- [ ] Responsive: ambient sky full-bleed; child controls centered (~480px) on desktop; parent dashboard uses multi-column width.
 - [ ] Tokens match `tailwind.config.js`; it ports to a clean React component.
