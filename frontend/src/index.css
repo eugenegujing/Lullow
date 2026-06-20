@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base: never pure white in child mode */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: #07091e;
+  color: #ede4d0;
+  font-family: 'Georgia', 'Times New Roman', serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Smooth scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(200, 180, 130, 0.3);
+  border-radius: 3px;
+}
+
+/* Gentle focus rings */
+*:focus-visible {
+  outline: 2px solid rgba(240, 168, 48, 0.6);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+@layer utilities {
+  .glow-amber {
+    box-shadow: 0 0 20px rgba(240, 168, 48, 0.4), 0 0 60px rgba(240, 168, 48, 0.15);
+  }
+  .glow-moon {
+    box-shadow: 0 0 30px rgba(200, 200, 255, 0.25), 0 0 80px rgba(180, 180, 240, 0.1);
+  }
+  .text-glow {
+    text-shadow: 0 0 12px rgba(240, 200, 120, 0.5);
+  }
+}
