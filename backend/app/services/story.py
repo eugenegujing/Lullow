@@ -111,11 +111,15 @@ def _generate_body(
         f"Write a gentle, cozy, personalized bedtime story for {child_name}."
     )
 
+    # Use the FAST model (Sonnet) for the story prose — it writes warm bedtime
+    # stories beautifully and is ~2-3x faster/cheaper than Opus. The deep model
+    # is reserved for planning/safety reasoning, not long creative generation.
+    # This also speeds up the safety-retry path, which calls _generate_body again.
     result, used_mock = anthropic_client.generate_json(
         STORY_GENERATION_SYSTEM,
         user_msg,
         mock={"title": mock_title, "body": mock_body},
-        deep=True,
+        deep=False,
         max_tokens=2000,
     )
 
