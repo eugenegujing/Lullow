@@ -409,3 +409,107 @@ A screen is "cracked, but calm" when:
 - [ ] "Find a grown-up" help is present on every child screen.
 - [ ] Responsive: ambient sky full-bleed; child controls centered (~480px) on desktop; parent dashboard uses multi-column width.
 - [ ] Tokens match `tailwind.config.js`; it ports to a clean React component.
+
+---
+
+## 11. Landing / hero page (cinematic)
+
+A public **landing page** that funnels visitors into the app (`/` Child Bedtime
+Mode, `/parent` Parent Dashboard). It uses a fullscreen **low-motion night-sky
+video**, glassmorphic nav, and cinematic serif type — on the Lullow night palette.
+The animation/visual mechanics below are intentional and reusable; only the copy and
+routing are product-specific.
+
+> Stays on-brand by using the §3 night palette + a **low-motion** video (no fast or
+> flashy footage) and honoring `prefers-reduced-motion`.
+
+### 11.1 Spec
+
+Stack: **React + Vite + Tailwind + TypeScript** (current Lullow stack; shadcn/ui optional).
+
+**Video background**
+- Fullscreen `<video>` with `autoPlay loop muted playsInline`.
+- Source: `/video/night-sky-loop.mp4` — slow, low-motion (drifting stars, soft moon, faint clouds). `poster="/img/night-sky.jpg"` fallback.
+- `absolute inset-0 w-full h-full object-cover z-0`.
+- `prefers-reduced-motion`: hide the video, show the static night-sky gradient + CSS stars.
+
+**Fonts**
+- Google Fonts: **Instrument Serif** (display) + **Nunito** 400/500 (body — warm, rounded, on-brand).
+- `--font-display: 'Instrument Serif', serif`; `--font-body: 'Nunito', sans-serif`.
+- Body uses `var(--font-body)`; headings use inline `fontFamily: "'Instrument Serif', serif"`.
+
+**Color theme (Lullow night palette, HSL CSS variables)**
+```
+--background: 235 62% 7%;        /* deep night #07091e */
+--foreground: 42 44% 87%;        /* warm moon cream #ede4d0 — never pure white */
+--muted-foreground: 40 39% 76%;  /* muted moon #d9c9a8 */
+--primary: 38 86% 56%;           /* amber glow #f0a830 */
+--primary-foreground: 235 62% 8%;
+--secondary: 233 66% 15%; --muted: 233 66% 15%; --accent: 233 66% 15%;  /* #0d1340 */
+--border: 233 40% 20%; --input: 233 40% 20%;
+```
+Fallback bg gradient: `linear-gradient(180deg,#07091e 0%,#0d1340 55%,#1c2675 100%)`.
+
+**Navigation bar**
+- `relative z-10`, flex row, `justify-between`, `px-8 py-6`, `max-w-7xl mx-auto`.
+- Logo: **"Lullow"** + crescent moon (🌙 as `<sup className="text-xs">`), `text-3xl tracking-tight`, Instrument Serif, `text-foreground`.
+- Links (`hidden md:flex`): **Home** (active, `text-foreground`), **How it Works**, **For Parents**, **Journal**, **Safety** — `text-sm text-muted-foreground hover:text-foreground transition-colors`.
+- CTA: **"Start bedtime"**, `liquid-glass rounded-full px-6 py-2.5 text-sm text-foreground hover:scale-[1.03]` → `/`.
+
+**Hero section**
+- `relative z-10`, flex column, centered, `text-center`, `px-6 pt-32 pb-40 py-[90px]`.
+- H1: **"Where dreams drift softly into sleep."** — `text-5xl sm:text-7xl md:text-8xl leading-[0.95] tracking-[-2.46px] max-w-7xl font-normal`, Instrument Serif. Wrap **"dreams"** and **"into sleep."** in `<em className="not-italic text-muted-foreground">`.
+- Subtext: `text-muted-foreground text-base sm:text-lg max-w-2xl mt-8 leading-relaxed` — "Lullow listens to your child's nighttime feelings, turns them into a gentle, personalized story, and narrates them to sleep — always within the safety boundaries you set."
+- CTA: **"Start bedtime"**, `liquid-glass rounded-full px-14 py-5 text-base text-foreground mt-12 hover:scale-[1.03] cursor-pointer` → `/`.
+- Secondary link: "or, for grown-ups →", `text-sm text-muted-foreground hover:text-foreground mt-6` → `/parent`.
+- **Persistent help (safety requirement):** small fixed `liquid-glass rounded-full px-4 py-2 text-xs` **"Find a grown-up"** button, bottom-left, `z-10`, always visible.
+
+**Animation assignments**
+- H1 → `animate-fade-rise`; subtext → `animate-fade-rise-delay`; hero CTA → `animate-fade-rise-delay-2`.
+
+**Layout:** no decorative blobs, radial gradients, or overlays. Minimalist, cinematic, vertically centered; the low-motion video provides all depth.
+
+### 11.2 Liquid glass (CSS — reusable)
+
+```css
+.liquid-glass {
+  background: rgba(255, 255, 255, 0.01);
+  background-blend-mode: luminosity;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: none;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+.liquid-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.4px;
+  background: linear-gradient(180deg,
+    rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.15) 20%,
+    rgba(255,255,255,0) 40%, rgba(255,255,255,0) 60%,
+    rgba(255,255,255,0.15) 80%, rgba(255,255,255,0.45) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+```
+
+### 11.3 Fade-rise animation (CSS — reusable)
+
+```css
+@keyframes fade-rise {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-rise        { animation: fade-rise 0.8s ease-out both; }
+.animate-fade-rise-delay  { animation: fade-rise 0.8s ease-out 0.2s both; }
+.animate-fade-rise-delay-2{ animation: fade-rise 0.8s ease-out 0.4s both; }
+```
+
+> Tip: generate the low-motion night-sky loop with **Pika** (your visual track), or
+> fall back to the CSS/Spline night sky from §9.
