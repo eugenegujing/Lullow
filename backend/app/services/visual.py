@@ -64,7 +64,7 @@ def _split_scenes(story: Story, world: StoryWorld) -> list[dict]:
         char = world.recurring_characters[0]
         char_hint = f"Recurring character: {char.name} the {char.species} ({', '.join(char.traits)})."
 
-    setting = world.recurring_setting or "Moonberry Forest"
+    setting = world.recurring_setting or story.plan.setting or "a soft, cozy place"
 
     mock_scenes = [
         {
@@ -79,11 +79,11 @@ def _split_scenes(story: Story, world: StoryWorld) -> list[dict]:
         },
         {
             "text": (
-                f"{story.plan.main_character or 'a gentle little fox'} curled up "
+                f"{story.plan.main_character or 'a gentle little friend'} curled up "
                 "beneath a blanket of moonbeams, feeling very safe and warm."
             ),
             "image_prompt": (
-                f"A small gentle fox curled under a soft moonlit blanket, "
+                f"A small gentle animal friend curled under a soft moonlit blanket, "
                 f"{setting.lower()}, warm amber glow, cozy and peaceful, "
                 "storybook illustration, soft colors"
             ),
@@ -106,7 +106,7 @@ def _split_scenes(story: Story, world: StoryWorld) -> list[dict]:
         f"Story body:\n{story.body}\n\n"
         f"Story world: {setting}\n"
         f"{char_hint}\n"
-        "Split this story into 3-5 quiet picture-book scenes. "
+        "Split this story into 2-3 quiet picture-book scenes. "
         "Bias toward environment shots (moon, stars, forest, blanket, lantern). "
         "Keep character close-ups minimal to avoid consistency issues."
     )
@@ -123,7 +123,7 @@ def _split_scenes(story: Story, world: StoryWorld) -> list[dict]:
     if not isinstance(scenes, list) or not scenes:
         scenes = mock_scenes
 
-    return scenes[:5]  # cap at 5
+    return scenes[:3]  # cap at 3 (a story needs only 2-3 looping clips)
 
 
 # --------------------------------------------------------------------------- #

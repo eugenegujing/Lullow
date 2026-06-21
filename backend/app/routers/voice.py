@@ -20,7 +20,7 @@ logger = logging.getLogger("lullow.routers.voice")
 
 router = APIRouter(prefix="/api/voice", tags=["voice"])
 
-_TTS_MAX_CHARS = 4000
+_TTS_MAX_CHARS = 50000  # the Deepgram client chunks long text internally into one continuous clip
 
 
 class TTSRequest(BaseModel):

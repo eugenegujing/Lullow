@@ -8,24 +8,19 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProfiles } from '../context/ProfileContext'
-import { getProfile, getStoryWorld } from '../api'
-import { suggestAvatar } from '../lib/profileStore'
 import type { LocalProfile } from '../lib/profileStore'
+import { startBgm } from '../lib/bgm'
 import WarmBackground from '../components/WarmBackground'
 import Brand from '../components/Brand'
 import Avatar from '../components/ui/Avatar'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
 
-const DEMO_CHILD_ID = 'child_001'
-
 export default function ProfilePicker() {
-  const { profiles, ready, selectProfile, createProfile, deleteProfile } = useProfiles()
+  const { profiles, ready, selectProfile, deleteProfile } = useProfiles()
   const navigate = useNavigate()
   const [busyId, setBusyId] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<LocalProfile | null>(null)
-  const [demoBusy, setDemoBusy] = useState(false)
-  const [demoError, setDemoError] = useState('')
 
   // First-run: if the roster is empty once loaded, jump straight to create.
   useEffect(() => {
@@ -35,40 +30,13 @@ export default function ProfilePicker() {
   }, [ready, profiles.length, navigate])
 
   const open = async (childId: string) => {
+    startBgm() // begin the looping lullaby on this tap (autoplay needs a gesture)
     setBusyId(childId)
     try {
       await selectProfile(childId)
       navigate('/child')
     } finally {
       setBusyId(null)
-    }
-  }
-
-  const tryDemo = async () => {
-    setDemoBusy(true)
-    setDemoError('')
-    try {
-      // If we already have Leo locally, just open him.
-      const existing = profiles.find(p => p.profile.child_id === DEMO_CHILD_ID)
-      if (existing) {
-        await open(DEMO_CHILD_ID)
-        return
-      }
-      const profile = await getProfile(DEMO_CHILD_ID)
-      let world
-      try {
-        world = await getStoryWorld(DEMO_CHILD_ID)
-      } catch {
-        world = undefined
-      }
-      const entry: LocalProfile = { profile, avatar: suggestAvatar(profile), world }
-      createProfile(entry)
-      await selectProfile(DEMO_CHILD_ID)
-      navigate('/child')
-    } catch {
-      setDemoError('Could not load the demo child. Is the backend running?')
-    } finally {
-      setDemoBusy(false)
     }
   }
 
@@ -80,8 +48,6 @@ export default function ProfilePicker() {
       </div>
     )
   }
-
-  const hasDemo = profiles.some(p => p.profile.child_id === DEMO_CHILD_ID)
 
   return (
     <div className="relative min-h-screen flex flex-col items-center px-6 py-12 sm:py-16">
@@ -118,15 +84,6 @@ export default function ProfilePicker() {
           </button>
         </div>
 
-        {/* Try the demo */}
-        {!hasDemo && (
-          <div className="text-center mt-10">
-            <Button variant="ghost" onClick={tryDemo} disabled={demoBusy}>
-              {demoBusy ? 'Loading demo…' : '✨ Try the demo (Leo, age 4)'}
-            </Button>
-            {demoError && <p className="text-peach-500 text-sm mt-2">{demoError}</p>}
-          </div>
-        )}
       </div>
 
       {/* Parent dashboard quick link */}

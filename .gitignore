@@ -26,6 +26,10 @@ backend/generated/
 *.mp3
 *.wav
 
+# ...but DO commit the bundled background-music assets
+!frontend/public/bgm/
+!frontend/public/bgm/*.mp3
+
 # OS
 .DS_Store
 Thumbs.db

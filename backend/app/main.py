@@ -20,12 +20,8 @@ logger = logging.getLogger("lullow")
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
-    """Seed demo data on startup if no children exist yet."""
-    try:
-        from .services.memory import seed_demo
-        seed_demo()
-    except Exception as exc:  # pragma: no cover
-        logger.warning("Demo seed failed (non-fatal): %s", exc)
+    # No demo seeding — profiles and their story worlds are created by the user.
+    # Nothing auto-creates Leo / Nino / Moonberry anymore.
     yield
 
 

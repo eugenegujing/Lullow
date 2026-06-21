@@ -106,8 +106,8 @@ export function buildWorld(
       : []
   return {
     child_id: childId,
-    story_world_id: 'moonberry_forest',
-    recurring_setting: 'Moonberry Forest',
+    story_world_id: 'default',
+    recurring_setting: '',  // no demo default; the child's own setting / Claude fills this
     recurring_characters: characters,
     past_themes: [],
     successful_rituals: [],

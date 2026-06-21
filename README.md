@@ -214,6 +214,23 @@ Lullow/
 
 ---
 
+## Audio assets & credits
+
+**Background music** (`frontend/public/bgm/`) — gentle, royalty-free piano from
+[Pixabay Music](https://pixabay.com/music/) (Pixabay Content License: free for
+commercial use, **no attribution required**; credited here anyway). One track is
+chosen **at random each time the app loads** and loops quietly the whole session
+(it ducks under narration; a 🎵 button toggles it):
+
+- `atlasaudio-nature-piano-519619.mp3` — by *atlasaudio* (Pixabay #519619)
+- `leberch-piano-516448.mp3` — by *leberch* (Pixabay #516448)
+- `the_mountain-piano-piano-music-490009.mp3` — by *The_Mountain* (Pixabay #490009)
+
+**Narration voice** — Deepgram Aura `aura-luna-en` (soft, calm, and fast ~1s;
+note the Aura-2 voices were ~70s on this tier, so we use Aura-1).
+
+---
+
 ## Operational notes
 
 - **Schema note:** `Story` now requires an `emotion` field. If you point at a

@@ -29,10 +29,10 @@ def _get_story_and_world():
     return story, world
 
 
-def test_generate_scenes_returns_three_to_five():
+def test_generate_scenes_returns_two_to_three():
     story, world = _get_story_and_world()
     updated = generate_scenes(story, world, animate=False)
-    assert 3 <= len(updated.scenes) <= 5
+    assert 2 <= len(updated.scenes) <= 3
 
 
 def test_generate_scenes_each_has_safety_filtered_prompt():

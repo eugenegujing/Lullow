@@ -117,7 +117,7 @@ sleep-oriented. Return STRICT JSON only:
 # --------------------------------------------------------------------------- #
 SCENE_SPLIT_SYSTEM = f"""{VOICE_TONE_RULES}
 
-Split a finished bedtime story into 3 to 5 QUIET scenes for a soft picture book.
+Split a finished bedtime story into 2 to 3 QUIET scenes for a soft picture book.
 For each scene write the narration text (a short excerpt/paraphrase) and ONE
 image prompt. Image prompts MUST be bedtime-safe: low saturation, soft warm
 moonlight, slow/calm, rounded shapes, gentle. NEVER scary shadows, monsters,

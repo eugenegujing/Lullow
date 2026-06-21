@@ -74,6 +74,26 @@ _MOCK_TRANSCRIPTS = [
     "I had a bad day and nobody played with me.",
 ]
 
+# Deepgram Aura accepts a limited number of characters per request, so long
+# stories are split on sentence boundaries and the audio is stitched into one
+# continuous clip (no gaps).
+_TTS_CHUNK_CHARS = 1800
+
+
+def _chunk_for_tts(text: str, max_chars: int = _TTS_CHUNK_CHARS) -> list[str]:
+    sentences = re.split(r"(?<=[.!?…])\s+", text)
+    chunks: list[str] = []
+    buf = ""
+    for s in sentences:
+        if buf and len(buf) + len(s) + 1 > max_chars:
+            chunks.append(buf)
+            buf = s
+        else:
+            buf = f"{buf} {s}".strip() if buf else s
+    if buf:
+        chunks.append(buf)
+    return chunks or [text[:max_chars]]
+
 
 class DeepgramClient:
     def __init__(self) -> None:
@@ -117,17 +137,37 @@ class DeepgramClient:
         if not spoken:
             spoken = "."
 
-        if not self.live or self._client is None:
+        if not self.live:
             return _mock_tts(text)
-        try:
-            from deepgram import SpeakOptions
 
-            options = SpeakOptions(
-                model=voice or settings.deepgram_tts_model,
-                encoding="mp3",
-            )
-            resp = self._client.speak.rest.v("1").stream_memory({"text": spoken}, options)
-            audio = self._extract_audio(resp)
+        model = voice or settings.deepgram_tts_model
+        try:
+            import httpx
+            from concurrent.futures import ThreadPoolExecutor
+
+            headers = {
+                "Authorization": f"Token {settings.deepgram_api_key}",
+                "Content-Type": "application/json",
+            }
+            url = f"https://api.deepgram.com/v1/speak?model={model}&encoding=mp3"
+
+            # Call Deepgram's REST API DIRECTLY. The official SDK's stream_memory
+            # took ~70s for Aura-2 voices; the raw REST call is ~2s. Long
+            # narration is split into chunks and stitched into ONE continuous mp3;
+            # chunks run in PARALLEL so total latency ≈ the slowest single chunk.
+            def _one(chunk: str) -> bytes:
+                r = httpx.post(url, headers=headers, json={"text": chunk}, timeout=60)
+                r.raise_for_status()
+                return r.content
+
+            chunks = _chunk_for_tts(spoken)
+            if len(chunks) == 1:
+                audio = _one(chunks[0])
+            else:
+                with ThreadPoolExecutor(max_workers=min(6, len(chunks))) as ex:
+                    audio = b"".join(ex.map(_one, chunks))  # map preserves order
+            if not audio:
+                return _mock_tts(text)
             return TTSResult(
                 audio_base64=base64.b64encode(audio).decode(),
                 mime_type="audio/mpeg",

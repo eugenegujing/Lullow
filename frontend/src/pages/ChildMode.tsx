@@ -38,7 +38,8 @@ import BreathingCircle from '../components/BreathingCircle'
 import ProfileSwitcher from '../components/ProfileSwitcher'
 import Button from '../components/ui/Button'
 import Avatar from '../components/ui/Avatar'
-import { useAudio } from '../hooks/useAudio'
+import { useAudio, unlockAudio } from '../hooks/useAudio'
+import { startBgm } from '../lib/bgm'
 
 // ------------------------------------------------------------------ //
 // Types
@@ -326,9 +327,11 @@ function AudioStoryPlayer({ story, onDone }: AudioStoryPlayerProps) {
   const [paused, setPaused] = useState(false)
   const [started, setStarted] = useState(false)
   const [sceneIndex, setSceneIndex] = useState(0)
+  const [loading, setLoading] = useState(false)
 
   const scenesWithAudio = story.scenes.filter(s => s.narration_audio_base64)
   const hasSceneAudio = scenesWithAudio.length > 0
+  const paragraphs = story.body.split(/\n\n+/).map(p => p.trim()).filter(Boolean)
 
   useEffect(() => {
     if (!started || paused) return
@@ -336,24 +339,29 @@ function AudioStoryPlayer({ story, onDone }: AudioStoryPlayerProps) {
 
     const advance = () => {
       if (cancelled) return
-      if (hasSceneAudio) {
-        if (sceneIndex < scenesWithAudio.length - 1) setSceneIndex(i => i + 1)
-        else onDone()
-      } else {
-        onDone()
-      }
+      if (hasSceneAudio && sceneIndex < scenesWithAudio.length - 1) setSceneIndex(i => i + 1)
+      else onDone()
     }
 
     if (hasSceneAudio) {
       const scene = scenesWithAudio[sceneIndex]
-      if (!scene) return
+      if (!scene) { onDone(); return }
       play(scene.narration_audio_base64!, 'audio/mpeg').then(advance)
     } else {
+      // One CONTINUOUS narration of the whole story — the backend stitches long
+      // text into a single clip, so it never plays in disjointed segments.
       if (sceneIndex !== 0) return
+      setLoading(true)
       postTTS(story.body)
-        .then(tts => play(tts.audio_base64, tts.mime_type))
+        .then(tts => {
+          setLoading(false)
+          return play(tts.audio_base64, tts.mime_type)
+        })
         .then(advance)
-        .catch(advance)
+        .catch(() => {
+          setLoading(false)
+          advance()
+        })
     }
 
     return () => {
@@ -363,7 +371,7 @@ function AudioStoryPlayer({ story, onDone }: AudioStoryPlayerProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sceneIndex, started, paused])
 
-  const handleStart = () => setStarted(true)
+  const handleStart = () => { unlockAudio(); setStarted(true) }
   const handlePause = () => {
     stop()
     setPaused(true)
@@ -374,8 +382,6 @@ function AudioStoryPlayer({ story, onDone }: AudioStoryPlayerProps) {
     onDone()
   }
 
-  const paragraphs = story.body.split('\n\n').filter(p => p.trim())
-
   return (
     <div className="flex flex-col items-center justify-center min-h-screen gap-8 px-6 max-w-lg mx-auto animate-fade-in">
       <NinoFox size={80} />
@@ -383,7 +389,7 @@ function AudioStoryPlayer({ story, onDone }: AudioStoryPlayerProps) {
       <div className="text-center">
         <h2 className="text-2xl text-moon-100 font-light text-glow mb-2">{story.title}</h2>
         <p className="text-moon-500 text-sm uppercase tracking-widest">
-          {story.plan.setting ?? 'Moonberry Forest'}
+          {story.plan.setting || ''}
         </p>
       </div>
 
@@ -405,6 +411,11 @@ function AudioStoryPlayer({ story, onDone }: AudioStoryPlayerProps) {
           >
             ▶ Play narration
           </button>
+        )}
+        {started && loading && !playing && (
+          <span className="px-6 py-3 text-moon-400 font-light animate-pulse-soft">
+            Preparing the voice…
+          </span>
         )}
         {started && !paused && playing && (
           <button
@@ -717,6 +728,7 @@ export default function ChildMode() {
 
   const handleContinueToStory = useCallback(async () => {
     if (!checkInResp) return
+    unlockAudio()  // prime audio within this tap so post-fetch narration can play (Safari)
     setScreen('generating')
     setError(null)
     try {
@@ -850,7 +862,7 @@ export default function ChildMode() {
 
       {/* Screen router */}
       {screen === 'home' && (
-        <HomeScreen name={name} avatar={avatar} childId={childId} onStart={() => setScreen('checkin')} />
+        <HomeScreen name={name} avatar={avatar} childId={childId} onStart={() => { unlockAudio(); startBgm(); setScreen('checkin') }} />
       )}
       {screen === 'checkin' && (
         <CheckInScreen childId={childId} avatar={avatar} onResult={handleCheckIn} onError={handleError} />

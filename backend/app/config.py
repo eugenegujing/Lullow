@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     # Deepgram
     deepgram_api_key: str = ""
     deepgram_stt_model: str = "nova-3"
-    deepgram_tts_model: str = "aura-2-luna-en"
+    deepgram_tts_model: str = "aura-2-cora-en"  # Aura-2: more natural but ~70s on this tier (chunks run in parallel)
 
     # Redis
     redis_url: str = ""

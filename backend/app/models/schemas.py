@@ -75,8 +75,8 @@ class RecurringCharacter(BaseModel):
 
 class StoryWorld(BaseModel):
     child_id: str
-    story_world_id: str = "moonberry_forest"
-    recurring_setting: str = "Moonberry Forest"
+    story_world_id: str = "default"
+    recurring_setting: str = ""  # no demo default; the child's own setting / Claude fills this
     recurring_characters: list[RecurringCharacter] = Field(default_factory=list)
     past_themes: list[str] = Field(default_factory=list)
     successful_rituals: list[str] = Field(default_factory=list)
