@@ -155,6 +155,7 @@ export interface StoryPlan {
 export interface StoryScene {
   index: number
   text: string
+  narration_text?: string | null
   mood?: string
   image_prompt: string
   image_url?: string | null
@@ -162,6 +163,8 @@ export interface StoryScene {
   narration_audio_base64?: string | null
   is_image_mock: boolean
   is_clip_mock: boolean
+  image_cache_key?: string | null
+  text_hash?: string | null
 }
 
 export interface ReviewTrail {

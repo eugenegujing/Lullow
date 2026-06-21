@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from ..dependencies import require_auth
 from ..models.schemas import ChildProfile, StoryWorld
 from ..services import memory as memory_service
+from ..services.demo_happy_path import ensure_demo_story_for_child
 
 logger = logging.getLogger("lullow.routers.profile")
 
@@ -33,13 +34,16 @@ def get_profile(child_id: str) -> ChildProfile:
     profile = memory_service.get_profile(child_id)
     if profile is None:
         raise HTTPException(status_code=404, detail=f"Profile {child_id} not found")
+    ensure_demo_story_for_child(profile, memory_service.get_world(child_id))
     return profile
 
 
 @router.put("", response_model=ChildProfile)
 def upsert_profile(profile: ChildProfile) -> ChildProfile:
     """Create or update a child profile."""
-    return memory_service.save_profile(profile)
+    saved = memory_service.save_profile(profile)
+    ensure_demo_story_for_child(saved, memory_service.get_world(saved.child_id))
+    return saved
 
 
 @router.get("/{child_id}/world", response_model=StoryWorld)
@@ -54,4 +58,8 @@ def upsert_world(child_id: str, world: StoryWorld) -> StoryWorld:
     # Ensure child_id is consistent
     if world.child_id != child_id:
         world = world.model_copy(update={"child_id": child_id})
-    return memory_service.save_world(world)
+    saved = memory_service.save_world(world)
+    profile = memory_service.get_profile(child_id)
+    if profile is not None:
+        ensure_demo_story_for_child(profile, saved)
+    return saved

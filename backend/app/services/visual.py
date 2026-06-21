@@ -81,7 +81,7 @@ def _split_scenes(story: Story, world: StoryWorld) -> list[dict]:
         f"Story body:\n{story.body}\n\n"
         f"Story world: {setting}\n"
         f"{char_hint}\n"
-        "Split this story into 2-3 quiet picture-book scenes. "
+        "Split this story into 3-4 quiet picture-book scenes. "
         "Bias toward environment shots (moon, stars, forest, blanket, lantern). "
         "Keep character close-ups minimal to avoid consistency issues."
     )
@@ -95,9 +95,9 @@ def _split_scenes(story: Story, world: StoryWorld) -> list[dict]:
     )
 
     scenes = result.get("scenes", mock_scenes)
-    if not isinstance(scenes, list) or len(scenes) < 2:
+    if not isinstance(scenes, list) or len(scenes) < 3:
         scenes = mock_scenes
-    return scenes[:3]  # 2-3 looping scenes is enough
+    return scenes[:4]
 
 
 def _ensure_master_reference(world: StoryWorld) -> tuple[StoryWorld, str | None]:

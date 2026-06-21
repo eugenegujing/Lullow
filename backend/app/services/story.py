@@ -32,6 +32,7 @@ from ..models.schemas import (
     StoryPlan,
     StoryRequest,
     StoryReviseRequest,
+    StorySearchRequest,
     StoryWorld,
     VisualMode,
 )
@@ -42,7 +43,7 @@ from .planner import build_plan
 from .prompt_agent import prompt_agent
 from .review_trail import build_review_trail
 from .safety import detect_escalation, evaluate_story
-from .story_retrieval import index_story_from_context
+from .story_retrieval import index_story_from_context, search_story
 
 logger = logging.getLogger("lullow.story")
 
@@ -216,6 +217,25 @@ def generate_story(
     # 4. Build plan
     plan = build_plan(extraction, profile, world, settings)
     used_mock["plan"] = False
+
+    rag_result = search_story(
+        StorySearchRequest(
+            child_id=req.child_id,
+            emotion=extraction.emotion,
+            comfort_goal=plan.theme,
+            story_strategy=plan.resolution,
+            character=plan.main_character,
+            setting=plan.setting,
+        ),
+        settings,
+        min_score=0.45,
+    )
+    if rag_result.matched and rag_result.story_id:
+        reused_story = memory_service.get_story(rag_result.story_id)
+        if reused_story is not None:
+            used_mock["rag_reused"] = True
+            used_mock["story"] = False
+            return reused_story, None, used_mock
 
     # 5. Generate story body
     title, body, body_mock = _generate_body(plan, profile, world, settings)

@@ -129,6 +129,39 @@ def test_put_and_get_profile_roundtrip(seeded_client):
     assert get_r.json()["name"] == "Ava"
 
 
+def test_profile_seeded_story_reuses_db_for_demo_query(seeded_client):
+    profile = {
+        "child_id": "child_happy",
+        "name": "Maya",
+        "age": 5,
+        "preferred_language": "English",
+        "favorite_animals": ["fox"],
+        "favorite_settings": ["moon garden"],
+        "comfort_objects": ["blue blanket"],
+        "sensitive_topics": [],
+        "preferred_story_length_minutes": 5,
+    }
+    put_r = seeded_client.put("/api/profile", json=profile)
+    assert put_r.status_code == 200
+
+    r = seeded_client.post("/api/story/generate", json={
+        "child_id": "child_happy",
+        "input_source": "text",
+        "speaker": "child",
+        "raw_input": "I'm scared of the dark.",
+        "visual_mode": "low_stimulation",
+    })
+
+    assert r.status_code == 200, r.text
+    data = r.json()
+    story = data["story"]
+    assert data["used_mock"]["rag_reused"] is True
+    assert story["story_id"] == "demo_story_child-happy_scared_dark"
+    assert len(story["scenes"]) == 4
+    assert all(scene["image_url"] for scene in story["scenes"])
+    assert all(scene["is_image_mock"] is False for scene in story["scenes"])
+
+
 # --------------------------------------------------------------------------- #
 # Settings
 # --------------------------------------------------------------------------- #

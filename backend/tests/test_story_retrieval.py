@@ -8,6 +8,7 @@ from app.models.schemas import (
     StorySearchRequest,
 )
 from app.services import memory as mem
+from app.integrations import vector_store
 from app.services.story import generate_story
 from app.services.story_retrieval import (
     apply_feedback,
@@ -80,3 +81,20 @@ def test_liked_story_can_be_reused_but_rejected_story_is_ignored():
     apply_feedback(StoryFeedbackRequest(liked=False, rejected=True), liked_record)
     rejected_result = search_story(_matching_search(story), mem.get_settings(story.child_id))
     assert rejected_result.matched is False
+
+
+def test_vector_candidate_for_different_child_is_ignored(monkeypatch):
+    story = _generate_demo_story()
+    profile = mem.get_profile(story.child_id)
+    world = mem.get_world(story.child_id)
+    index_story_from_existing(story, profile, world, approved=True)
+    monkeypatch.setattr(
+        vector_store,
+        "search",
+        lambda *_args, **_kwargs: [{"id": story.story_id, "score": 1.0}],
+    )
+
+    cross_child_req = _matching_search(story).model_copy(update={"child_id": "child_002"})
+    result = search_story(cross_child_req, mem.get_settings("child_002"), min_score=0.1)
+
+    assert result.matched is False
