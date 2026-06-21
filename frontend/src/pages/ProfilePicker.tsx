@@ -64,11 +64,12 @@ export default function ProfilePicker() {
       <DreamscapeBackdrop />
 
       <header className="relative z-10 mx-auto flex w-full max-w-[1030px] items-center justify-between gap-4">
-        <img
-          src="/logo.png"
-          alt="Lullow — Light & Lore"
-          className="h-14 w-auto rounded-2xl drop-shadow-[0_0_20px_rgba(255,225,180,0.4)] sm:h-16"
-        />
+        <div className="flex items-center gap-3" aria-label="Lullow">
+          <LullowMark className="h-10 w-10 shrink-0 drop-shadow-[0_0_7px_rgba(246,208,137,0.6)] sm:h-12 sm:w-12" />
+          <span className="dreamscape-font text-3xl font-bold tracking-wide text-[#fff0cf] drop-shadow-[0_0_14px_rgba(255,225,180,0.55)] sm:text-4xl">
+            Lullow
+          </span>
+        </div>
         <button
           type="button"
           onClick={() => {
@@ -241,6 +242,45 @@ function DreamscapeBackdrop() {
         />
       ))}
     </div>
+  )
+}
+
+// The Lullow brand glyph — a glowing line-art bell lamp over an open book,
+// with a small sparkle. Drawn as vector SVG so it stays crisp at any size.
+function LullowMark({ className = '' }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 100 100"
+      role="img"
+      aria-label="Lullow"
+      fill="none"
+      stroke="#f6d089"
+      strokeWidth={3.4}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {/* lamp arch */}
+      <path d="M33 62 V40 C33 23 67 23 67 40 V62" />
+      {/* bell: stem, dome, rim */}
+      <path d="M50 26 V34" />
+      <path d="M44 47 C44 37 56 37 56 47" />
+      <path d="M41 47 Q50 51 59 47" />
+      {/* glowing filament winding down into the book */}
+      <path d="M50 51 C57 55 43 59 50 63 C57 66 45 67 50 70" />
+      {/* open book */}
+      <path d="M50 70 C40 65 24 65 13 71 V77 C24 71 40 71 50 76 C60 71 76 71 87 77 V71 C76 65 60 65 50 70 Z" />
+      <path d="M50 70 V76" />
+      {/* bell knob + clapper */}
+      <circle cx="50" cy="35" r="1.7" fill="#f6d089" stroke="none" />
+      <circle cx="50" cy="50" r="1.7" fill="#f6d089" stroke="none" />
+      {/* sparkle */}
+      <path
+        d="M80 17 C80.8 22 82 23.2 87 24 C82 24.8 80.8 26 80 31 C79.2 26 78 24.8 73 24 C78 23.2 79.2 22 80 17 Z"
+        fill="#f6d089"
+        stroke="none"
+      />
+    </svg>
   )
 }
 
