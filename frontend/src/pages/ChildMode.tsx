@@ -6,6 +6,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { AnimatePresence, motion } from 'motion/react'
 import {
   lampOff,
   postCheckIn,
@@ -33,8 +34,9 @@ type Screen =
   | 'checkin'
   | 'escalation'
   | 'generating'
-  | 'story-visual'
-  | 'story-audio'
+  | 'story-audio' // bedtime default: lights-out narration
+  | 'story-visual' // kept; only reached via the storybook path
+  | 'storybook' // post-goodnight picture-book view
   | 'goodnight'
 
 function TapScreen({
@@ -209,12 +211,12 @@ function GeneratingScreen() {
 
 function AudioStoryPlayer({ story, onDone }: { story: Story; onDone: () => void }) {
   const { play, stop, playing } = useAudio()
-  const [started, setStarted] = useState(false)
+  // Lights-out narration auto-starts on mount: audio was already unlocked
+  // earlier in the flow (home/ready/checkin), so no manual tap is needed.
   const [loading, setLoading] = useState(false)
   const paragraphs = story.body.split(/\n\n+/).map(p => p.trim()).filter(Boolean)
 
   useEffect(() => {
-    if (!started) return
     let cancelled = false
     const moods = story.mood_track?.length ? story.mood_track : ['calm']
     const audioEl = getNarrationAudio()
@@ -255,7 +257,7 @@ function AudioStoryPlayer({ story, onDone }: { story: Story; onDone: () => void 
       audioEl.removeEventListener('timeupdate', syncLamp)
       stop()
     }
-  }, [onDone, play, started, stop, story.body, story.mood_track])
+  }, [onDone, play, stop, story.body, story.mood_track])
 
   return (
     <div className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center gap-7 px-6 animate-fade-in">
@@ -267,22 +269,9 @@ function AudioStoryPlayer({ story, onDone }: { story: Story; onDone: () => void 
       <div className="liquid-glass scrollbar-thin max-h-72 w-full overflow-y-auto rounded-2xl border border-night-700/40 bg-night-900/35 p-5 text-lg font-light leading-relaxed text-moon-200 space-y-4">
         {paragraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
       </div>
-      {!started ? (
-        <button
-          type="button"
-          onClick={() => {
-            unlockAudio()
-            setStarted(true)
-          }}
-          className="rounded-2xl border border-night-600 bg-night-800/60 px-7 py-3 font-light text-moon-200 transition-colors duration-300 hover:border-glow-amber/50 hover:text-glow-amber"
-        >
-          Play narration
-        </button>
-      ) : (
-        <span className="text-sm font-light text-moon-500">
-          {loading && !playing ? 'Preparing the voice...' : 'Playing softly...'}
-        </span>
-      )}
+      <span className="text-sm font-light text-moon-500">
+        {loading && !playing ? 'Preparing the voice...' : 'Playing softly...'}
+      </span>
     </div>
   )
 }
@@ -431,32 +420,73 @@ function VisualStoryPlayer({ story, onDone }: { story: Story; onDone: () => void
   )
 }
 
-function GoodnightScreen({ onRestart }: { onRestart: () => void }) {
+function GoodnightScreen({
+  story,
+  onViewStorybook,
+  onRestart,
+}: {
+  story: Story | null
+  onViewStorybook: () => void
+  onRestart: () => void
+}) {
   const navigate = useNavigate()
+
+  // Slow, gentle staggered fade-up so the goodnight reveal settles softly.
+  const container = {
+    hidden: {},
+    show: { transition: { staggerChildren: 0.5, delayChildren: 0.2 } },
+  }
+  const child = {
+    hidden: { opacity: 0, y: 14 },
+    show: { opacity: 1, y: 0, transition: { duration: 1.1, ease: 'easeOut' as const } },
+  }
+
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 animate-fade-in">
-      <div className="relative">
+    <motion.div
+      variants={container}
+      initial="hidden"
+      animate="show"
+      className="flex min-h-screen flex-col items-center justify-center gap-6"
+    >
+      <motion.div variants={child} className="relative">
         <GlowEffect mode="breathe" blur="high" colors={['#fcd34d', '#f59e0b', '#6366f1', 'transparent']} energy={0.05} />
         <NinoFox size={72} />
-      </div>
-      <p className="text-center text-2xl font-light text-moon-300 text-glow">
+      </motion.div>
+      <motion.p variants={child} className="text-center text-2xl font-light text-moon-300 text-glow">
         Sweet dreams.
-      </p>
-      <button
+      </motion.p>
+      {story?.story_id && (
+        <motion.button
+          variants={child}
+          type="button"
+          onClick={onViewStorybook}
+          className="mt-2 rounded-2xl border border-night-600 bg-night-800/60 px-7 py-3 font-light text-moon-200 transition-colors duration-300 hover:border-glow-amber/50 hover:text-glow-amber"
+        >
+          ✦ See tonight's storybook
+        </motion.button>
+      )}
+      {story?.story_id && (
+        <motion.p variants={child} className="-mt-2 text-xs font-light text-night-500">
+          Keep it for the morning to read again.
+        </motion.p>
+      )}
+      <motion.button
+        variants={child}
         type="button"
         onClick={onRestart}
         className="mt-6 text-sm font-light text-night-400 transition-colors duration-300 hover:text-moon-500"
       >
         Start over
-      </button>
-      <button
+      </motion.button>
+      <motion.button
+        variants={child}
         type="button"
         onClick={() => navigate('/parent')}
         className="text-xs font-light text-night-500 transition-colors duration-300 hover:text-moon-600"
       >
         Parent dashboard
-      </button>
-    </div>
+      </motion.button>
+    </motion.div>
   )
 }
 
@@ -469,11 +499,37 @@ export default function ChildMode() {
   const [showHelp, setShowHelp] = useState(false)
   const [storyEscalation, setStoryEscalation] = useState<SafetyEscalation | null>(null)
   const rawTextRef = useRef('')
+  // Holds the in-flight (or resolved) background visual pre-generation so the
+  // storybook opens instantly after goodnight without a second request.
+  const visualsRef = useRef<Promise<Story> | null>(null)
 
   const childId = activeChildId ?? ''
   const name = activeProfile?.profile.name ?? 'friend'
 
   const handleError = useCallback((msg: string) => setError(msg), [])
+
+  // Pre-generate the picture book's visuals while narration plays. Demo / RAG-hit
+  // stories already carry scenes -> nothing to generate. Live stories fire a
+  // single background request and populate the story so the storybook is instant.
+  const ensureVisuals = useCallback((s: Story) => {
+    if (s.scenes && s.scenes.length > 0) {
+      visualsRef.current = Promise.resolve(s)
+      return visualsRef.current
+    }
+    if (!visualsRef.current) {
+      visualsRef.current = postGenerateVisuals({
+        story_id: s.story_id,
+        child_id: s.child_id,
+        animate: true,
+      })
+        .then(populated => {
+          setStory(populated) // story.scenes now filled
+          return populated
+        })
+        .catch(() => s) // fall back; storybook view lazy-gens as a last resort
+    }
+    return visualsRef.current
+  }, [])
 
   const generateStoryFromCheckIn = useCallback(
     async (resp: CheckInResponse, rawText: string) => {
@@ -503,7 +559,8 @@ export default function ChildMode() {
         }
 
         setStory(result.story)
-        setScreen('story-visual')
+        ensureVisuals(result.story) // kick off background pre-gen (fire-and-forget)
+        setScreen('story-audio') // bedtime defaults to lights-out narration
       } catch (generateError) {
         setError(
           generateError instanceof Error
@@ -513,7 +570,7 @@ export default function ChildMode() {
         setScreen('checkin')
       }
     },
-    [childId],
+    [childId, ensureVisuals],
   )
 
   const handleCheckIn = useCallback(
@@ -536,6 +593,7 @@ export default function ChildMode() {
     setStory(null)
     setStoryEscalation(null)
     rawTextRef.current = ''
+    visualsRef.current = null
   }, [])
 
   const showHelpButton = screen !== 'escalation' && !showHelp
@@ -588,38 +646,63 @@ export default function ChildMode() {
         </div>
       )}
 
-      {screen === 'home' && (
-        <TapScreen
-          title={`Hi, ${name}`}
-          subtitle="Touch anywhere to begin."
-          onNext={() => {
-            unlockAudio()
-            startBgm()
-            setScreen('ready')
-          }}
-        />
-      )}
-      {screen === 'ready' && (
-        <TapScreen
-          title="Ready for a bedtime story?"
-          subtitle="Tap when you are ready."
-          onNext={() => {
-            unlockAudio()
-            setScreen('checkin')
-          }}
-        />
-      )}
-      {screen === 'checkin' && (
-        <CheckInScreen childId={childId} onResult={handleCheckIn} onError={handleError} />
-      )}
-      {screen === 'generating' && <GeneratingScreen />}
-      {screen === 'story-visual' && story && (
-        <VisualStoryPlayer story={story} onDone={handleStoryDone} />
-      )}
-      {screen === 'story-audio' && story && (
-        <AudioStoryPlayer story={story} onDone={handleStoryDone} />
-      )}
-      {screen === 'goodnight' && <GoodnightScreen onRestart={handleRestart} />}
+      {/* Crossfade between stages. One keyed motion.div per screen state so each
+          stage gently fades up on enter and fades away on exit. */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={screen}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.6, ease: 'easeInOut' }}
+        >
+          {screen === 'home' && (
+            <TapScreen
+              title={`Hi, ${name}`}
+              subtitle="Touch anywhere to begin."
+              onNext={() => {
+                unlockAudio()
+                startBgm()
+                setScreen('ready')
+              }}
+            />
+          )}
+          {screen === 'ready' && (
+            <TapScreen
+              title="Ready for a bedtime story?"
+              subtitle="Tap when you are ready."
+              onNext={() => {
+                unlockAudio()
+                setScreen('checkin')
+              }}
+            />
+          )}
+          {screen === 'checkin' && (
+            <CheckInScreen childId={childId} onResult={handleCheckIn} onError={handleError} />
+          )}
+          {screen === 'generating' && <GeneratingScreen />}
+          {screen === 'story-audio' && story && (
+            <AudioStoryPlayer story={story} onDone={handleStoryDone} />
+          )}
+          {/* story-visual is reached only via the storybook path */}
+          {screen === 'storybook' && story && (
+            <VisualStoryPlayer
+              story={story}
+              onDone={() => {
+                lampOff()
+                setScreen('goodnight')
+              }}
+            />
+          )}
+          {screen === 'goodnight' && (
+            <GoodnightScreen
+              story={story}
+              onViewStorybook={() => setScreen('storybook')}
+              onRestart={handleRestart}
+            />
+          )}
+        </motion.div>
+      </AnimatePresence>
     </div>
   )
 }

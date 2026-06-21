@@ -12,6 +12,7 @@ import {
   getStoryWorld, putStoryWorld,
   getStoryHistory,
   postReviseStory, postApproveStory, postAnnotateStory,
+  postGenerateVisuals,
   getJournal, getRecentEvals,
 } from '../api'
 import type {
@@ -467,9 +468,59 @@ interface ReviewTrailCardProps {
   revising: boolean
 }
 
+/**
+ * The picture-book for a story. If scenes already exist (demo / RAG-hit / already
+ * generated) we show the image grid instantly; otherwise the parent can generate
+ * one on demand. `animate: false` keeps it fast — images only, no Pika clips.
+ */
+function StorybookStrip({ story }: { story: Story }) {
+  const [s, setS] = useState(story)
+  const [gen, setGen] = useState(false)
+  const scenes = s.scenes ?? []
+
+  const generate = async () => {
+    setGen(true)
+    try {
+      setS(await postGenerateVisuals({ story_id: s.story_id, child_id: s.child_id, animate: false }))
+    } catch {
+      /* keep as-is */
+    } finally {
+      setGen(false)
+    }
+  }
+
+  if (scenes.length === 0) {
+    return (
+      <div className="mt-4">
+        <Button variant="secondary" size="sm" onClick={generate} disabled={gen}>
+          {gen ? 'Painting…' : '📖 Generate storybook'}
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {scenes.map(sc => (
+        <figure key={sc.index}>
+          {sc.image_url && (
+            <img
+              src={sc.image_url}
+              alt={sc.text}
+              className="w-full aspect-[4/3] object-cover rounded-xl border border-cream-300"
+            />
+          )}
+          <figcaption className="text-ink-100 text-xs mt-1 leading-snug">{sc.text}</figcaption>
+        </figure>
+      ))}
+    </div>
+  )
+}
+
 function ReviewTrailCard({ story, onApprove, onRevise, approving, revising }: ReviewTrailCardProps) {
   const [showRevise, setShowRevise] = useState(false)
   const [reviseText, setReviseText] = useState('')
+  const [showBook, setShowBook] = useState(false)
   const [annotating, setAnnotating] = useState(false)
   const [annotations, setAnnotations] = useState<AnnotationLabels>({})
   const [annoSaving, setAnnoSaving] = useState(false)
@@ -559,10 +610,16 @@ function ReviewTrailCard({ story, onApprove, onRevise, approving, revising }: Re
         <Button variant="secondary" size="sm" onClick={() => setShowRevise(v => !v)}>
           ✏ Revise
         </Button>
+        <Button variant="secondary" size="sm" onClick={() => setShowBook(b => !b)}>
+          📖 Storybook
+        </Button>
         <Button variant="secondary" size="sm" onClick={() => setAnnotating(a => !a)}>
           🏷 Label
         </Button>
       </div>
+
+      {/* Picture-book images for this story (generate on demand if missing) */}
+      {showBook && <StorybookStrip story={story} />}
 
       {/* Revision box */}
       {showRevise && (
