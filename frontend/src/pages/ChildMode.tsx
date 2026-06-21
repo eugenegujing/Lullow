@@ -24,6 +24,9 @@ import { useProfiles } from '../context/ProfileContext'
 import { startBgm } from '../lib/bgm'
 import { getNarrationAudio, unlockAudio, useAudio } from '../hooks/useAudio'
 
+const STORY_END_NARRATION =
+  'And that is the end of our story for tonight. Rest softly now. Sweet dreams.'
+
 type Screen =
   | 'home'
   | 'ready'
@@ -285,11 +288,16 @@ function VisualStoryPlayer({ story, onDone }: { story: Story; onDone: () => void
   const [loading, setLoading] = useState(true)
   const [scenes, setScenes] = useState<StoryScene[]>(story.scenes)
   const [paused, setPaused] = useState(false)
+  const [ending, setEnding] = useState(false)
   const { play, stop } = useAudio()
   const videoRef = useRef<HTMLVideoElement>(null)
 
   useEffect(() => {
-    if (story.scenes.length > 0) {
+    const needsVisuals =
+      story.scenes.length === 0 ||
+      story.scenes.some(scene => !scene.image_url || scene.is_image_mock)
+
+    if (!needsVisuals) {
       setLoading(false)
       return
     }
@@ -299,16 +307,29 @@ function VisualStoryPlayer({ story, onDone }: { story: Story; onDone: () => void
   }, [story])
 
   useEffect(() => {
-    if (loading || paused || scenes.length === 0) return
+    if (loading || paused || ending || scenes.length === 0) return
     const scene = scenes[sceneIndex]
     if (!scene) return
     let cancelled = false
     setLampMood(scene.mood ?? 'calm')
 
+    const finishStory = () => {
+      if (cancelled) return
+      stop()
+      setEnding(true)
+      setLampMood('sleepy')
+      postTTS(STORY_END_NARRATION)
+        .then(tts => play(tts.audio_base64, tts.mime_type))
+        .catch(() => undefined)
+        .finally(() => {
+          if (!cancelled) onDone()
+        })
+    }
+
     const advance = () => {
       if (cancelled) return
       if (sceneIndex < scenes.length - 1) setSceneIndex(index => index + 1)
-      else onDone()
+      else finishStory()
     }
 
     const narration = scene.narration_text || scene.text
@@ -318,19 +339,28 @@ function VisualStoryPlayer({ story, onDone }: { story: Story; onDone: () => void
       postTTS(narration)
         .then(tts => play(tts.audio_base64, tts.mime_type))
         .then(advance)
-        .catch(advance)
+        .catch(() => {
+          /* Keep the slide visible; the child can continue with Next. */
+        })
     }
 
     return () => {
       cancelled = true
       stop()
     }
-  }, [loading, onDone, paused, play, sceneIndex, scenes, stop])
+  }, [ending, loading, onDone, paused, play, sceneIndex, scenes, stop])
 
   const skipScene = () => {
     stop()
     if (sceneIndex < scenes.length - 1) setSceneIndex(index => index + 1)
-    else onDone()
+    else {
+      setEnding(true)
+      setLampMood('sleepy')
+      postTTS(STORY_END_NARRATION)
+        .then(tts => play(tts.audio_base64, tts.mime_type))
+        .catch(() => undefined)
+        .finally(onDone)
+    }
   }
 
   if (loading) {
@@ -359,7 +389,7 @@ function VisualStoryPlayer({ story, onDone }: { story: Story; onDone: () => void
   const scene = scenes[sceneIndex]
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-5 px-4 animate-fade-in">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-4 py-5 animate-fade-in">
       <div className="mb-1 flex gap-2">
         {scenes.map((_, index) => (
           <span
@@ -373,7 +403,12 @@ function VisualStoryPlayer({ story, onDone }: { story: Story; onDone: () => void
 
       <div
         className="relative overflow-hidden rounded-2xl border border-night-700/40"
-        style={{ width: '100%', maxWidth: 500, aspectRatio: '16/9', background: '#0d1240' }}
+        style={{
+          width: 'min(94vw, 760px)',
+          maxHeight: '62vh',
+          aspectRatio: '4/3',
+          background: '#0d1240',
+        }}
       >
         {scene.clip_url ? (
           <video
@@ -395,7 +430,7 @@ function VisualStoryPlayer({ story, onDone }: { story: Story; onDone: () => void
         )}
       </div>
 
-      <p className="max-w-sm px-2 text-center text-lg font-light leading-relaxed text-moon-200">
+      <p className="max-w-2xl px-2 text-center text-lg font-light leading-relaxed text-moon-200">
         {scene.text}
       </p>
 
@@ -408,16 +443,18 @@ function VisualStoryPlayer({ story, onDone }: { story: Story; onDone: () => void
               return !value
             })
           }}
-          className="rounded-2xl border border-night-600/70 bg-night-900/45 px-5 py-2.5 text-sm font-light text-moon-400 transition-colors duration-300 hover:border-moon-500 hover:text-moon-200"
+          disabled={ending}
+          className="rounded-2xl border border-night-600/70 bg-night-900/45 px-5 py-2.5 text-sm font-light text-moon-400 transition-colors duration-300 hover:border-moon-500 hover:text-moon-200 disabled:opacity-40"
         >
           {paused ? 'Resume' : 'Pause'}
         </button>
         <button
           type="button"
           onClick={skipScene}
-          className="rounded-2xl border border-night-600/70 bg-night-900/45 px-5 py-2.5 text-sm font-light text-moon-400 transition-colors duration-300 hover:border-glow-amber/50 hover:text-glow-amber"
+          disabled={ending}
+          className="rounded-2xl border border-night-600/70 bg-night-900/45 px-5 py-2.5 text-sm font-light text-moon-400 transition-colors duration-300 hover:border-glow-amber/50 hover:text-glow-amber disabled:opacity-40"
         >
-          Next
+          {ending ? 'Ending' : sceneIndex < scenes.length - 1 ? 'Next' : 'Finish'}
         </button>
       </div>
     </div>

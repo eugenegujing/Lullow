@@ -78,7 +78,7 @@ export default function ProfilePicker() {
             }
           }}
           disabled={profiles.length === 0}
-          className="rounded-full border border-[#b9915c]/45 bg-[#fff0cf] px-5 py-2.5 text-base font-medium text-[#4b3828] shadow-[0_0_26px_rgba(255,218,162,0.75),inset_0_2px_2px_rgba(255,255,255,0.8)] transition duration-400 hover:scale-[1.03] hover:bg-[#fff6e0] disabled:cursor-not-allowed disabled:opacity-45 sm:px-7"
+          className="rounded-2xl border border-[#fff0cf]/18 bg-[#111940]/40 px-4 py-2 text-sm font-medium text-[#fff0cf]/82 shadow-[0_14px_32px_rgba(7,9,28,0.22)] backdrop-blur-md transition duration-300 hover:border-[#ffe0a3]/42 hover:bg-[#fff0cf]/10 hover:text-[#fff6df] disabled:cursor-not-allowed disabled:opacity-35 sm:px-5"
         >
           Parent dashboard
         </button>
@@ -97,16 +97,18 @@ export default function ProfilePicker() {
             the child who is here now.
           </p>
 
-          <div className="group/list mt-10 flex w-full flex-wrap items-start justify-center gap-7 px-2 sm:mt-12 sm:gap-9">
+          <div className="group/list mt-10 grid w-full grid-cols-2 justify-items-center gap-4 px-2 sm:mt-12 sm:flex sm:flex-wrap sm:items-start sm:justify-center sm:gap-6 lg:gap-7">
             <button
               type="button"
               onClick={() => navigate('/create')}
-              className="dream-profile-card flex w-28 flex-col items-center gap-3 text-center transition duration-600 ease-out group-hover/list:opacity-80 hover:-translate-y-1 hover:opacity-100 focus-visible:-translate-y-1 focus-visible:opacity-100 focus:outline-none sm:w-32"
+              className="group/new flex min-h-[13.5rem] w-full max-w-[10.5rem] flex-col items-center justify-center gap-4 rounded-[2rem] border border-[#fff0cf]/16 bg-[#111940]/34 px-4 py-5 text-center shadow-[0_22px_60px_rgba(6,8,31,0.28),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md transition duration-500 ease-out group-hover/list:opacity-[0.82] hover:-translate-y-1 hover:border-[#ffe0a3]/45 hover:bg-[#fff0cf]/10 hover:opacity-100 focus-visible:-translate-y-1 focus-visible:border-[#ffe0a3]/55 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffd98f]/20 sm:w-[10.5rem]"
             >
-              <span className="dream-glow-pulse flex h-24 w-24 items-center justify-center rounded-full border border-[#ffe7bd]/75 bg-[radial-gradient(circle_at_35%_30%,rgba(255,255,255,0.4),rgba(88,82,108,0.72)_58%,rgba(37,38,73,0.74)_100%)] text-6xl font-light text-[#ffe9be] shadow-[0_0_34px_rgba(255,223,178,0.58),inset_0_2px_12px_rgba(255,255,255,0.2)] sm:h-28 sm:w-28">
-                +
+              <span className="flex h-24 w-24 items-center justify-center rounded-full border border-[#ffe7bd]/32 bg-[radial-gradient(circle_at_38%_25%,rgba(255,245,219,0.24),rgba(42,47,94,0.62)_62%,rgba(17,25,64,0.82)_100%)] shadow-[0_0_34px_rgba(255,223,178,0.24),inset_0_2px_12px_rgba(255,255,255,0.08)] transition duration-500 group-hover/new:shadow-[0_0_46px_rgba(255,223,178,0.42),inset_0_2px_12px_rgba(255,255,255,0.12)]">
+                <svg viewBox="0 0 24 24" className="h-10 w-10 text-[#ffe9be]" fill="none" aria-hidden="true">
+                  <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
               </span>
-              <span className="text-lg font-medium text-[#fff1dc] drop-shadow-[0_2px_8px_rgba(9,11,47,0.75)]">
+              <span className="text-base font-medium text-[#fff1dc] drop-shadow-[0_2px_8px_rgba(9,11,47,0.75)]">
                 New profile
               </span>
             </button>
@@ -167,39 +169,48 @@ interface CardProps {
 function ProfileCard({ entry, busy, onOpen, onEdit, onDelete }: CardProps) {
   const { profile } = entry
   return (
-    <div className="dream-profile-card group/profile relative w-28 text-center transition duration-600 ease-out group-hover/list:opacity-80 hover:-translate-y-1 hover:opacity-100 focus-within:-translate-y-1 focus-within:opacity-100 sm:w-32">
+    <div className="group/profile relative min-h-[13.5rem] w-full max-w-[10.5rem] rounded-[2rem] border border-[#fff0cf]/16 bg-[#111940]/34 px-4 py-5 text-center shadow-[0_22px_60px_rgba(6,8,31,0.28),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md transition duration-500 ease-out group-hover/list:opacity-[0.82] hover:-translate-y-1 hover:border-[#ffe0a3]/45 hover:bg-[#fff0cf]/10 hover:opacity-100 focus-within:-translate-y-1 focus-within:border-[#ffe0a3]/55 focus-within:opacity-100 sm:w-[10.5rem]">
       <button
         type="button"
         onClick={onOpen}
         disabled={busy}
-        className="flex w-full flex-col items-center gap-3 transition duration-600 ease-out disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#ffd98f]/30"
+        className="flex w-full flex-col items-center gap-3 transition duration-500 ease-out disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#ffd98f]/20"
       >
-        <span className="flex h-24 w-24 items-center justify-center rounded-full border-[3px] border-[#ffe8bd] bg-[#fff1d2] p-1 shadow-[0_0_34px_rgba(255,223,178,0.58),inset_0_0_0_4px_rgba(115,82,55,0.18)] transition duration-600 group-hover/profile:shadow-[0_0_48px_rgba(255,223,178,0.78),inset_0_0_0_4px_rgba(115,82,55,0.18)] sm:h-28 sm:w-28">
+        <span className="flex h-24 w-24 items-center justify-center rounded-full border border-[#ffe8bd]/62 bg-[#fff1d2] p-1 shadow-[0_0_34px_rgba(255,223,178,0.36),inset_0_0_0_4px_rgba(115,82,55,0.14)] transition duration-500 group-hover/profile:shadow-[0_0_52px_rgba(255,223,178,0.58),inset_0_0_0_4px_rgba(115,82,55,0.16)]">
           <PortraitAvatar name={profile.name || 'Lullow'} seed={profile.child_id} />
         </span>
-        <span className="max-w-full truncate text-lg font-medium text-[#fff1dc] drop-shadow-[0_2px_8px_rgba(9,11,47,0.75)]">
-          <span>{profile.name || 'Unnamed'}</span>
-          <span>, age {profile.age}</span>
+        <span className="flex max-w-full flex-col items-center gap-0.5 drop-shadow-[0_2px_8px_rgba(9,11,47,0.75)]">
+          <span className="max-w-full truncate text-base font-semibold text-[#fff1dc]">
+            {profile.name || 'Unnamed'}
+          </span>
+          <span className="text-xs font-medium uppercase tracking-[0.18em] text-[#ffe7bd]/58">
+            age {profile.age}
+          </span>
         </span>
         {busy && <span className="animate-pulse text-xs font-semibold text-[#f8ba55]">Opening...</span>}
       </button>
 
-      <div className="absolute -right-2 -top-2 flex gap-1 opacity-0 transition-opacity duration-400 group-hover/profile:opacity-100 group-focus-within/profile:opacity-100">
+      <div className="absolute right-3 top-3 flex gap-1.5 opacity-0 transition-opacity duration-300 group-hover/profile:opacity-100 group-focus-within/profile:opacity-100">
         <button
           type="button"
           onClick={onEdit}
           aria-label={`Edit ${profile.name}`}
-          className="flex h-7 w-8 items-center justify-center rounded-full border border-[#ffe6b6]/40 bg-[#1b214e]/85 text-[10px] font-semibold text-[#fff0cf] shadow-[0_8px_18px_rgba(0,0,0,0.24)] backdrop-blur transition-colors hover:bg-[#fff0cf] hover:text-[#443326]"
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-[#ffe6b6]/25 bg-[#10173e]/78 text-[#fff0cf]/78 shadow-[0_8px_18px_rgba(0,0,0,0.24)] backdrop-blur-md transition-colors hover:border-[#ffe6b6]/55 hover:bg-[#fff0cf]/14 hover:text-[#fff6df] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#ffd98f]/20"
         >
-          Edit
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+            <path d="M5 19h4.2L18.4 9.8a2.1 2.1 0 0 0-3-3L6.2 16H5v3Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+            <path d="m14 8 2 2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+          </svg>
         </button>
         <button
           type="button"
           onClick={onDelete}
           aria-label={`Remove ${profile.name}`}
-          className="flex h-7 w-7 items-center justify-center rounded-full border border-[#ffe6b6]/40 bg-[#1b214e]/85 text-[10px] font-semibold text-[#ffd3be] shadow-[0_8px_18px_rgba(0,0,0,0.24)] backdrop-blur transition-colors hover:bg-[#ffd3be] hover:text-[#443326]"
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-[#ffe6b6]/25 bg-[#10173e]/78 text-[#ffd3be]/78 shadow-[0_8px_18px_rgba(0,0,0,0.24)] backdrop-blur-md transition-colors hover:border-[#ffd3be]/55 hover:bg-[#ffd3be]/14 hover:text-[#ffe2d5] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#ffd98f]/20"
         >
-          X
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+            <path d="M6 7h12M9 7V5.5h6V7m-7 3 .6 8h6.8l.6-8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </button>
       </div>
     </div>

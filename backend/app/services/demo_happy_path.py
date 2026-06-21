@@ -1,7 +1,6 @@
-"""Seed a reusable DB-backed story for the demo happy path."""
+"""Seed the reusable DB-backed Wally story for the demo happy path."""
 from __future__ import annotations
 
-import base64
 from datetime import datetime, timezone
 
 from ..models.schemas import (
@@ -15,184 +14,136 @@ from ..models.schemas import (
     StoryWorld,
 )
 from . import memory as memory_service
-from .asset_cache import image_cache_key, save_cached_asset, stable_part, text_hash
+from .asset_cache import stable_part, text_hash
 from .story_retrieval import index_story_from_existing
 
 
-DEMO_QUERY = "I'm scared of the dark."
+DEMO_QUERY = "I feel lonely and wish I had a friend."
+DEMO_TITLE = "Wally Finds a Friend"
+DEMO_SLIDE_IMAGE_URLS = (
+    "/demo/wolf.jpg",
+    "/demo/wolf-friend.jpg",
+    "/demo/wolf-happy-and-not-alone.jpg",
+    "/demo/good-night-sweet-dreams.svg",
+)
 
 
-def _story_id(child_id: str) -> str:
-    return f"demo_story_{stable_part(child_id)}_scared_dark"
+def demo_story_id(child_id: str) -> str:
+    return f"demo_story_{stable_part(child_id)}_wally_friendship"
 
 
-def _svg_data_uri(label: str, hue: int) -> str:
-    svg = f"""<svg xmlns='http://www.w3.org/2000/svg' width='1024' height='768'>
-<defs>
-<radialGradient id='sky' cx='50%' cy='28%' r='78%'>
-<stop offset='0%' stop-color='hsl({hue},48%,34%)'/>
-<stop offset='100%' stop-color='hsl({hue},58%,12%)'/>
-</radialGradient>
-</defs>
-<rect width='1024' height='768' fill='url(#sky)'/>
-<circle cx='802' cy='142' r='72' fill='#f8e8a6' opacity='0.92'/>
-<circle cx='160' cy='146' r='4' fill='white' opacity='0.75'/>
-<circle cx='294' cy='92' r='3' fill='white' opacity='0.70'/>
-<circle cx='472' cy='180' r='4' fill='white' opacity='0.65'/>
-<circle cx='640' cy='98' r='3' fill='white' opacity='0.70'/>
-<path d='M0 612 C190 548 292 618 450 566 C612 510 748 566 1024 504 L1024 768 L0 768 Z' fill='#18213f' opacity='0.9'/>
-<rect x='298' y='476' width='428' height='78' rx='39' fill='#f5dca4' opacity='0.95'/>
-<rect x='356' y='424' width='312' height='86' rx='43' fill='#f9ecd2' opacity='0.94'/>
-<text x='512' y='682' text-anchor='middle' fill='#f8efd7' font-family='Georgia, serif' font-size='38'>{label}</text>
-</svg>"""
-    return "data:image/svg+xml;base64," + base64.b64encode(svg.encode("utf-8")).decode("ascii")
+def _slide_texts() -> list[str]:
+    return [
+        (
+            "High on a tall mountain lived a little wolf named Wally.\n"
+            "Wally watched the clouds and listened to the wind every day.\n"
+            "But he had no friends to play with, and sometimes he felt lonely."
+        ),
+        (
+            "One morning, a tiny bird landed beside Wally.\n"
+            "\"Why do you look so sad?\" asked the bird.\n"
+            "\"I wish I had a friend,\" said Wally.\n"
+            "\"I can be your friend!\" chirped the bird.\n"
+            "They spent the whole day exploring the mountain together."
+        ),
+        (
+            "Soon, other animals joined them: rabbits, squirrels, and birds.\n"
+            "The mountain was filled with laughter and fun.\n"
+            "Wally smiled and said, \"Being kind helped me find friends!\"\n"
+            "And from that day on, the lonely wolf was lonely no more.\n"
+            "The End. Moral: A kind heart can turn strangers into friends."
+        ),
+        "Good night, little one. Sweet dreams.",
+    ]
 
 
-def _character(profile: ChildProfile, world: StoryWorld) -> str:
-    if world.recurring_characters:
-        char = world.recurring_characters[0]
-        return f"{char.name} the {char.species}"
-    if profile.favorite_animals:
-        return f"a gentle little {profile.favorite_animals[0]}"
-    return "a gentle little friend"
-
-
-def _setting(profile: ChildProfile, world: StoryWorld) -> str:
-    if world.recurring_setting:
-        return world.recurring_setting
-    if profile.favorite_settings:
-        return profile.favorite_settings[0]
-    return "a moonlit blanket fort"
+def _scene_prompts() -> list[str]:
+    return [
+        (
+            "simple bedtime picture book illustration of a small friendly wolf "
+            "named Wally alone on a tall peaceful mountain, soft clouds, gentle "
+            "wind, calm pastel colors, cozy and non-scary"
+        ),
+        (
+            "simple bedtime picture book illustration of Wally the little wolf "
+            "meeting a tiny kind bird on a mountain path, warm friendship moment, "
+            "clear characters, soft pastel colors, cozy and non-scary"
+        ),
+        (
+            "simple bedtime picture book illustration of Wally the little wolf "
+            "laughing with rabbits, squirrels, and birds on a sunny mountain, "
+            "friendship, kindness, happy calm ending, soft pastel colors"
+        ),
+        (
+            "calm bedtime closing card with moon, stars, soft hills, and the "
+            "words good night and sweet dreams, gentle low-stimulation colors"
+        ),
+    ]
 
 
 def ensure_demo_story_for_child(
     profile: ChildProfile,
     world: StoryWorld | None = None,
 ) -> Story:
-    """Create or refresh the approved RAG story used by the demo happy path."""
+    """Create or refresh the approved RAG story used by the Wally demo."""
     world = world or memory_service.get_world(profile.child_id)
-    character = _character(profile, world)
-    setting = _setting(profile, world)
-    child_name = profile.name or "little one"
-    story_id = _story_id(profile.child_id)
-    title = "The Moon Lamp Path"
-    theme = "help the child feel safe, tucked in, and sleepy"
-    resolution = (
-        f"{child_name} and {character} move from the big feeling into safety, "
-        "softness, and sleep."
-    )
-
-    body = (
-        f"In {setting}, {child_name} noticed the room felt very wide when the "
-        f"lights grew low. {character} sat nearby with a tiny moon lamp and said, "
-        "\"Night can feel big, but we can make it soft together.\"\n\n"
-        f"They turned the moon lamp toward the ceiling. A slow silver path appeared, "
-        f"touching the blanket, the pillow, and the quiet corners one by one. "
-        f"{child_name} named each safe thing in the room and felt the blanket grow warm.\n\n"
-        f"{character} invited three moon breaths: in like soft light, out like a sleepy cloud. "
-        f"With every breath, the dark became a gentle curtain around a cozy little stage.\n\n"
-        f"Soon the moon path rested beside {child_name}'s pillow. The big feeling became small "
-        f"enough to hold, then small enough to set down. The stars watched kindly while sleep "
-        f"came close."
-    )
+    story_id = demo_story_id(profile.child_id)
+    slide_texts = _slide_texts()
+    prompts = _scene_prompts()
 
     plan = StoryPlan(
-        theme=theme,
-        tone="warm, slow, cozy, reassuring, low-stimulation",
+        theme="help a lonely child feel connected through kindness and friendship",
+        tone="warm, simple, hopeful, sleepy, low-stimulation",
         conflict_intensity="none",
-        avoid=["danger", "monsters", "violence", "scary shadows"],
-        resolution=resolution,
-        ritual="three moon breaths",
-        main_character=character,
-        setting=setting,
+        avoid=["danger", "violence", "scary imagery", "shame", "abandonment"],
+        resolution="Wally learns that a kind heart can turn strangers into friends.",
+        ritual="say one kind hello",
+        main_character="Wally the little wolf",
+        setting="a tall peaceful mountain above the clouds",
     )
 
-    scene_specs = [
-        (
-            f"{child_name} notices the room feels wide, and {character} brings over a tiny moon lamp.",
-            f"Soft storybook illustration in {setting}, moon lamp glow, cozy bed, gentle friend nearby, no scary shadows",
-            "night",
-            "Moon lamp",
-            218,
-        ),
-        (
-            "A silver path of light touches the blanket, pillow, and quiet corners one by one.",
-            f"Moonlit blanket and pillow in {setting}, small warm lamp, peaceful corners, low stimulation bedtime art",
-            "cozy",
-            "Safe room",
-            226,
-        ),
-        (
-            f"{child_name} and {character} take three moon breaths, slow and soft.",
-            f"Child and gentle companion breathing calmly under a soft blanket in {setting}, sleepy stars, warm moonlight",
-            "calm",
-            "Moon breaths",
-            236,
-        ),
-        (
-            "The big feeling becomes small enough to set down, and sleep comes close.",
-            f"Peaceful bedtime scene in {setting}, moon path near pillow, kind stars, soft storybook ending",
-            "sleepy",
-            "Sleep comes",
-            246,
-        ),
+    scenes = [
+        StoryScene(
+            index=index,
+            text=text,
+            narration_text=text,
+            mood=mood,
+            image_prompt=prompts[index],
+            image_url=DEMO_SLIDE_IMAGE_URLS[index],
+            clip_url=None,
+            narration_audio_base64=None,
+            is_image_mock=False,
+            is_clip_mock=True,
+            image_cache_key=f"demo:wally:{index + 1}",
+            text_hash=text_hash(text),
+        )
+        for index, (text, mood) in enumerate(
+            zip(slide_texts, ["lonely", "hopeful", "happy", "sleepy"], strict=True)
+        )
     ]
-
-    scenes: list[StoryScene] = []
-    for index, (text, prompt, mood, label, hue) in enumerate(scene_specs):
-        key = image_cache_key(
-            story_title=title,
-            character=character,
-            setting=setting,
-            emotion=Emotion.SCARED.value,
-            scene_index=index,
-        )
-        image_url = _svg_data_uri(label, hue)
-        save_cached_asset(
-            key,
-            {
-                "image_url": image_url,
-                "image_prompt": prompt,
-                "is_image_mock": False,
-                "story_id": story_id,
-                "scene_index": index,
-            },
-        )
-        scenes.append(
-            StoryScene(
-                index=index,
-                text=text,
-                narration_text=text,
-                mood=mood,
-                image_prompt=prompt,
-                image_url=image_url,
-                clip_url=None,
-                narration_audio_base64=None,
-                is_image_mock=False,
-                is_clip_mock=True,
-                image_cache_key=key,
-                text_hash=text_hash(text),
-            )
-        )
 
     story = Story(
         story_id=story_id,
         child_id=profile.child_id,
-        title=title,
-        body=body,
+        title=DEMO_TITLE,
+        body="\n\n".join(slide_texts),
         plan=plan,
         scenes=scenes,
-        mood_track=["night", "cozy", "calm", "sleepy"],
+        mood_track=["lonely", "hopeful", "happy", "sleepy"],
         review_trail=ReviewTrail(
             story_id=story_id,
-            title=title,
+            title=DEMO_TITLE,
             child_said=DEMO_QUERY,
-            emotion_target=Emotion.SCARED.value,
+            emotion_target=Emotion.LONELY.value,
             memory_used=[
-                f"character: {character}",
-                f"setting: {setting}",
+                "demo placeholder: Wally the little wolf",
+                "local images: frontend/public/demo/wolf*.jpg",
             ],
-            safety_constraints_applied=["sleep friendly", "no scary escalation"],
+            safety_constraints_applied=[
+                "sleep friendly",
+                "no scary escalation",
+                "kindness-focused moral",
+            ],
             avoided_topics=plan.avoid,
             parent_edits=[],
             final_status="parent_approved",
@@ -202,12 +153,12 @@ def ensure_demo_story_for_child(
             too_scary=False,
             parent_constraints_followed=True,
             sleep_friendly=True,
-            emotional_warmth=0.95,
+            emotional_warmth=0.96,
             blocked_topic_hits=[],
-            notes="Seeded safe demo story for RAG reuse.",
+            notes="Seeded safe demo story with local placeholder images.",
             passed=True,
         ),
-        emotion=Emotion.SCARED,
+        emotion=Emotion.LONELY,
         visual_mode=memory_service.get_settings(profile.child_id).visual_mode,
         created_at=datetime.now(timezone.utc).isoformat(),
     )

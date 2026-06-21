@@ -1,20 +1,9 @@
-"""Image model client — image-first picture-book page rendering.
-
-Renders each story page with a locked character + fixed style (Gemini 2.5 Flash
-Image / "Nano Banana", or OpenAI gpt-image-1). The mock returns a soft moonlit
-SVG data URI so the picture-book always has something gentle to show.
-
-Reference image (for character consistency):
-  - If reference_image_url is a data: URI, the bytes are decoded and inlined.
-  - If it is an http(s) URL, the bytes are fetched and inlined.
-  - Gemini: inlined as an inlineData part alongside the text prompt.
-  - OpenAI: posted to the images/edits endpoint so the model can reference it.
-  - Mock path: reference image is ignored (SVG placeholder returned).
-"""
+"""Image model client for picture-book page rendering."""
 from __future__ import annotations
 
 import base64
 import hashlib
+import html
 import logging
 from typing import Optional
 
@@ -23,28 +12,78 @@ from .midjourney_client import midjourney_client
 
 logger = logging.getLogger("lullow.image")
 
-# Fixed art style string for character/style consistency across pages.
 STYLE_STRING = (
-    "soft storybook illustration, low saturation, warm moonlight, rounded "
-    "shapes, gentle, cozy, bedtime-safe, no sharp contrast, no scary shadows"
+    "soft storybook illustration, accurate to the slide narration, single clear "
+    "story moment, low saturation, warm moonlight, rounded shapes, gentle, cozy, "
+    "bedtime-safe, no sharp contrast, no scary shadows"
 )
 
 
+def _caption_from_prompt(prompt: str) -> str:
+    lower = prompt.lower()
+    if "breath" in lower:
+        return "Moon breaths"
+    if "path" in lower or "silver" in lower:
+        return "Silver path"
+    if "sleep" in lower or "pillow" in lower:
+        return "Sleep comes close"
+    if "lamp" in lower:
+        return "Moon lamp"
+    return "Soft bedtime scene"
+
+
 def _mock_scene_svg(prompt: str) -> str:
-    """A calming gradient placeholder, deterministic per prompt, as a data URI."""
+    """A calming story-specific SVG fallback, deterministic per prompt."""
     h = hashlib.md5(prompt.encode()).hexdigest()
-    hue = int(h[:2], 16) % 60 + 210  # blues/indigos/purples — night palette
-    svg = f"""<svg xmlns='http://www.w3.org/2000/svg' width='768' height='512'>
+    hue = int(h[:2], 16) % 60 + 210
+    lower = prompt.lower()
+    if "breath" in lower:
+        scene = """
+<rect x='316' y='496' width='392' height='70' rx='35' fill='#f8ead2' opacity='0.88'/>
+<circle cx='420' cy='456' r='44' fill='#d6a06e' opacity='0.94'/>
+<circle cx='572' cy='456' r='44' fill='#c9906a' opacity='0.94'/>
+<path d='M462 384 C512 330 572 330 622 384' stroke='#f6df9b' stroke-width='16' fill='none' stroke-linecap='round' opacity='0.48'/>
+<path d='M430 344 C510 266 596 266 676 344' stroke='#f6df9b' stroke-width='10' fill='none' stroke-linecap='round' opacity='0.28'/>
+"""
+    elif "path" in lower or "silver" in lower or "corner" in lower:
+        scene = """
+<rect x='296' y='508' width='450' height='68' rx='34' fill='#f8ead2' opacity='0.86'/>
+<path d='M174 426 C296 360 426 398 548 338 C646 290 730 240 852 158' stroke='#f6df9b' stroke-width='30' stroke-linecap='round' opacity='0.50'/>
+<circle cx='326' cy='390' r='16' fill='#f6df9b' opacity='0.86'/>
+<circle cx='522' cy='344' r='14' fill='#f6df9b' opacity='0.78'/>
+<circle cx='706' cy='248' r='13' fill='#f6df9b' opacity='0.72'/>
+"""
+    elif "sleep" in lower or "pillow" in lower:
+        scene = """
+<rect x='310' y='512' width='420' height='72' rx='36' fill='#f8ead2' opacity='0.88'/>
+<path d='M340 538 C460 594 604 594 710 538' stroke='#cad9f2' stroke-width='42' stroke-linecap='round' opacity='0.78'/>
+<circle cx='454' cy='476' r='42' fill='#d6a06e' opacity='0.94'/>
+<path d='M250 392 C404 348 578 348 760 392' stroke='#f6df9b' stroke-width='16' stroke-linecap='round' opacity='0.30'/>
+"""
+    else:
+        scene = """
+<rect x='310' y='508' width='420' height='76' rx='38' fill='#f8ead2' opacity='0.88'/>
+<circle cx='704' cy='472' r='36' fill='#f6d57a' opacity='0.94'/>
+<path d='M704 472 C636 420 566 420 498 470' stroke='#f6df9b' stroke-width='18' stroke-linecap='round' opacity='0.40'/>
+<circle cx='432' cy='462' r='46' fill='#d6a06e' opacity='0.94'/>
+<path d='M406 478 Q430 500 460 478' stroke='#6f4c43' stroke-width='8' fill='none' stroke-linecap='round'/>
+"""
+
+    caption = html.escape(_caption_from_prompt(prompt))
+    svg = f"""<svg xmlns='http://www.w3.org/2000/svg' width='1024' height='768'>
 <defs><radialGradient id='g' cx='50%' cy='35%' r='75%'>
 <stop offset='0%' stop-color='hsl({hue},45%,32%)'/>
 <stop offset='100%' stop-color='hsl({hue},55%,12%)'/>
 </radialGradient></defs>
-<rect width='768' height='512' fill='url(#g)'/>
-<circle cx='600' cy='130' r='60' fill='hsl(48,70%,82%)' opacity='0.9'/>
-<circle cx='180' cy='110' r='2.5' fill='white' opacity='0.8'/>
-<circle cx='300' cy='80' r='2' fill='white' opacity='0.7'/>
-<circle cx='430' cy='150' r='2.5' fill='white' opacity='0.6'/>
-<circle cx='120' cy='220' r='1.8' fill='white' opacity='0.7'/>
+<rect width='1024' height='768' fill='url(#g)'/>
+<circle cx='802' cy='142' r='72' fill='hsl(48,70%,82%)' opacity='0.9'/>
+<circle cx='180' cy='110' r='4' fill='white' opacity='0.8'/>
+<circle cx='300' cy='80' r='3' fill='white' opacity='0.7'/>
+<circle cx='520' cy='150' r='4' fill='white' opacity='0.6'/>
+<circle cx='120' cy='260' r='3' fill='white' opacity='0.7'/>
+<path d='M0 612 C190 548 292 618 450 566 C612 510 748 566 1024 504 L1024 768 L0 768 Z' fill='#18213f' opacity='0.9'/>
+{scene}
+<text x='512' y='684' text-anchor='middle' fill='#f8efd7' font-family='Georgia, serif' font-size='34'>{caption}</text>
 </svg>"""
     return "data:image/svg+xml;base64," + base64.b64encode(svg.encode()).decode()
 
@@ -52,12 +91,12 @@ def _mock_scene_svg(prompt: str) -> str:
 def _resolve_reference_bytes(reference_image_url: str) -> tuple[bytes, str]:
     """Return (image_bytes, mime_type) for a reference image URL or data URI."""
     if reference_image_url.startswith("data:"):
-        # data:<mime>;base64,<data>
         header, encoded = reference_image_url.split(",", 1)
         mime = header.split(";")[0].replace("data:", "")
         return base64.b64decode(encoded), mime
-    # http(s) URL — fetch bytes
+
     import httpx
+
     resp = httpx.get(reference_image_url, timeout=30, follow_redirects=True)
     resp.raise_for_status()
     mime = resp.headers.get("content-type", "image/png").split(";")[0]
@@ -78,16 +117,20 @@ class ImageClient:
         """Return (image_url_or_data_uri, is_mock)."""
         full_prompt = f"{prompt}. STYLE: {STYLE_STRING}"
         if not self.live:
-            # If the global image client is not live, still allow a configured
-            # midjourney provider to handle the request. Otherwise return mock.
             if settings.midjourney_api_key and settings.midjourney_base_url:
-                return midjourney_client.generate_image(prompt, reference_image_url=reference_image_url)
+                return midjourney_client.generate_image(
+                    prompt,
+                    reference_image_url=reference_image_url,
+                )
             return _mock_scene_svg(prompt), True
         try:
             if self.provider == "gemini":
                 return self._gemini(full_prompt, reference_image_url), False
             if self.provider == "midjourney":
-                return midjourney_client.generate_image(full_prompt, reference_image_url=reference_image_url)
+                return midjourney_client.generate_image(
+                    full_prompt,
+                    reference_image_url=reference_image_url,
+                )
             return self._openai(full_prompt, reference_image_url), False
         except Exception as exc:  # pragma: no cover - network dependent
             logger.warning("Image generation failed, using mock: %s", exc)
@@ -101,9 +144,6 @@ class ImageClient:
             f"{settings.gemini_image_model}:generateContent"
         )
         parts: list[dict] = [{"text": prompt}]
-
-        # Inline the reference image alongside the text prompt so Gemini can
-        # anchor character appearance across pages (P1-1).
         if reference_image_url:
             try:
                 ref_bytes, ref_mime = _resolve_reference_bytes(reference_image_url)
@@ -116,11 +156,10 @@ class ImageClient:
             except Exception as exc:
                 logger.warning("Could not inline reference image for Gemini: %s", exc)
 
-        payload = {"contents": [{"parts": parts}]}
         resp = httpx.post(
             url,
             headers={"x-goog-api-key": settings.gemini_api_key},
-            json=payload,
+            json={"contents": [{"parts": parts}]},
             timeout=60,
         )
         resp.raise_for_status()
@@ -136,8 +175,6 @@ class ImageClient:
         import httpx
 
         if reference_image_url:
-            # Use the images/edits endpoint so the model can see the reference
-            # character and maintain visual consistency (P1-1).
             try:
                 ref_bytes, ref_mime = _resolve_reference_bytes(reference_image_url)
                 resp = httpx.post(
@@ -152,10 +189,10 @@ class ImageClient:
                 return f"data:image/png;base64,{b64}"
             except Exception as exc:
                 logger.warning(
-                    "OpenAI edits with reference failed, falling back to generations: %s", exc
+                    "OpenAI edits with reference failed, falling back to generations: %s",
+                    exc,
                 )
 
-        # No reference or edits failed — standard generation
         resp = httpx.post(
             "https://api.openai.com/v1/images/generations",
             headers={"Authorization": f"Bearer {settings.openai_api_key}"},

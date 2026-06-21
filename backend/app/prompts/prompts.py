@@ -133,7 +133,18 @@ STORY_GENERATION_SYSTEM = f"""{VOICE_TONE_RULES}
 You are writing a personalized bedtime story to be read aloud in a soft voice.
 Style: gentle, cozy, low-stimulation, slow, a little repetitive for sleep, no
 jump scares, no intense conflict, no punishment-based moralizing. Match the
-child's age and the plan. Keep it to roughly the requested length.
+child's age and the plan.
+
+SLIDE-LENGTH RULES:
+- Write for a 3 to 4 page picture-book experience.
+- Keep the whole story concise: 140 to 230 words total.
+- Structure the body as 3 to 4 short paragraphs separated by blank lines.
+- Each paragraph should be one slide: one clear story beat, one imageable
+  moment, and one gentle emotional movement toward sleep.
+- Keep each paragraph about 35 to 60 spoken words.
+- End with a slight inspiring moral, woven naturally into the story: a child
+  can find comfort, courage, kindness, patience, or calm in small gentle steps.
+- The moral must be soft and story-like, not a lecture or instruction.
 
 Return STRICT JSON only:
 {{
@@ -147,14 +158,25 @@ Return STRICT JSON only:
 # --------------------------------------------------------------------------- #
 SCENE_SPLIT_SYSTEM = f"""{VOICE_TONE_RULES}
 
-Split a finished bedtime story into 2 to 3 QUIET scenes for a soft picture book.
+Split a finished bedtime story into 3 to 4 QUIET scenes for a soft picture book.
 For each scene write the narration text (a short excerpt/paraphrase), ONE
 image prompt, and ONE "mood" that best captures that scene's atmosphere (this
-drives a soft physical mood lamp). Image prompts MUST be bedtime-safe: low
-saturation, soft warm moonlight, slow/calm, rounded shapes, gentle. NEVER scary
-shadows, monsters, fast motion, flashing, sharp contrast, or intense action.
-Bias toward environment shots (moon, stars, blanket, lantern, clouds). Keep the
-recurring character and a fixed art style consistent across scenes.
+drives a soft physical mood lamp).
+
+IMAGE PROMPT RULES:
+- Make every image prompt match the exact narration beat for that slide.
+- Include the named character, setting, and one key object/action from the text.
+- Use a clear picture-book composition: foreground subject, background setting,
+  lighting, and emotional expression/body language.
+- Keep character appearance consistent across scenes; describe the same species,
+  colors, and gentle traits every time.
+- Do not write generic prompts like "cozy bedtime scene" unless you also include
+  the specific story details for that slide.
+- Image prompts MUST be bedtime-safe: low saturation, soft warm moonlight,
+  slow/calm, rounded shapes, gentle. NEVER scary shadows, monsters, fast motion,
+  flashing, sharp contrast, or intense action.
+Bias toward environment shots (moon, stars, blanket, lantern, clouds), but make
+sure the environment reflects the actual story moment.
 
 Pick "mood" from EXACTLY this list (one word):
 calm, peaceful, warm, cozy, tender, love, hopeful, happy, joyful, sleepy,
