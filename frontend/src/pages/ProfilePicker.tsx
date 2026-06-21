@@ -15,7 +15,6 @@ import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
 import BackgroundGradientAnimation from '../components/BackgroundGradientAnimation'
 import LullowLogo from '../components/LullowLogo'
-import LullowBorderBeam from '../components/LullowBorderBeam'
 import GlowingEffect from '../components/GlowingEffect'
 
 const dotStars = [
@@ -89,9 +88,8 @@ export default function ProfilePicker() {
             }
           }}
           disabled={profiles.length === 0}
-          className="relative overflow-hidden rounded-full border border-[#b9915c]/45 bg-[#fff0cf] px-5 py-2.5 text-base font-medium text-[#4b3828] shadow-[0_0_26px_rgba(255,218,162,0.75),inset_0_2px_2px_rgba(255,255,255,0.8)] transition duration-400 hover:scale-[1.03] hover:bg-[#fff6e0] disabled:cursor-not-allowed disabled:opacity-45 sm:px-7"
+          className="rounded-full border border-[#b9915c]/45 bg-[#fff0cf] px-5 py-2.5 text-base font-medium text-[#4b3828] shadow-[0_0_26px_rgba(255,218,162,0.75),inset_0_2px_2px_rgba(255,255,255,0.8)] transition duration-400 hover:scale-[1.03] hover:bg-[#fff6e0] disabled:cursor-not-allowed disabled:opacity-45 sm:px-7"
         >
-          {profiles.length > 0 && <LullowBorderBeam duration={8} glowOpacity={0.5} />}
           Parent dashboard
         </button>
       </header>
@@ -116,7 +114,6 @@ export default function ProfilePicker() {
               className="dream-profile-card flex w-28 flex-col items-center gap-3 text-center transition duration-600 ease-out group-hover/list:opacity-80 hover:-translate-y-1 hover:opacity-100 focus-visible:-translate-y-1 focus-visible:opacity-100 focus:outline-none sm:w-32"
             >
               <span className="dream-glow-pulse relative flex h-24 w-24 items-center justify-center rounded-full border border-[#ffe7bd]/75 bg-[radial-gradient(circle_at_35%_30%,rgba(255,255,255,0.4),rgba(88,82,108,0.72)_58%,rgba(37,38,73,0.74)_100%)] text-6xl font-light text-[#ffe9be] shadow-[0_0_34px_rgba(255,223,178,0.58),inset_0_2px_12px_rgba(255,255,255,0.2)] sm:h-28 sm:w-28">
-                <LullowBorderBeam duration={9} glowOpacity={0.55} />
                 +
               </span>
               <span className="text-lg font-medium text-[#fff1dc] drop-shadow-[0_2px_8px_rgba(9,11,47,0.75)]">
