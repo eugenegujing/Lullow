@@ -67,6 +67,11 @@ export function isBgmMuted(): boolean {
   return muted()
 }
 
+/** True only while the lullaby is actively playing (created, not paused, not muted). */
+export function isBgmPlaying(): boolean {
+  return !!el && !el.paused && !muted()
+}
+
 /** Toggle mute; returns the new muted state. */
 export function toggleBgmMuted(): boolean {
   const next = !muted()
