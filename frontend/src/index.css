@@ -159,6 +159,64 @@ body {
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* ------------------------------------------------------------------ */
+/* Poetic Ascent — celestial skin helpers (ported from PR#5).          */
+/* Additive only; used by BackgroundGradientAnimation / GlowEffect /   */
+/* the re-skinned dark Home + Check-in surfaces. The motion/blob       */
+/* animations live in the components themselves (motion/react), so     */
+/* only these frosted-glass + scrollbar helpers are needed here.       */
+/* ------------------------------------------------------------------ */
+
+/* Frosted "liquid glass" card surface for the celestial dark theme. */
+.liquid-glass {
+  background: rgba(255, 255, 255, 0.01);
+  background-blend-mode: luminosity;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: none;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.liquid-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.4px;
+  background: linear-gradient(180deg,
+    rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.15) 20%,
+    rgba(255,255,255,0) 40%, rgba(255,255,255,0) 60%,
+    rgba(255,255,255,0.15) 80%, rgba(255,255,255,0.45) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Thin / hidden scrollbars for the celestial story panels. */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 99px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
 /* Respect reduced-motion: drop the dreamscape (and all) animations. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

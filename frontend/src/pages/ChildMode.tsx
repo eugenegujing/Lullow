@@ -20,6 +20,9 @@ import HelpScreen from '../components/HelpScreen'
 import MicButton from '../components/MicButton'
 import NightSky from '../components/NightSky'
 import NinoFox from '../components/NinoFox'
+import BackgroundGradientAnimation from '../components/BackgroundGradientAnimation'
+import LullowBorderBeam from '../components/LullowBorderBeam'
+import GlowEffect from '../components/GlowEffect'
 import { useProfiles } from '../context/ProfileContext'
 import { startBgm } from '../lib/bgm'
 import { getNarrationAudio, unlockAudio, useAudio } from '../hooks/useAudio'
@@ -59,8 +62,10 @@ function TapScreen({
       className="relative min-h-screen w-full cursor-pointer px-6 text-center focus:outline-none"
     >
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 animate-fade-in">
-        <div className="flex h-24 w-24 items-center justify-center rounded-full border border-moon-500/20 bg-night-800/30 shadow-[0_0_70px_rgba(230,220,180,0.08)]">
-          <NinoFox size={62} />
+        <div className="relative flex h-28 w-28 items-center justify-center rounded-full border border-amber-300/25 bg-night-900/40 shadow-[0_0_70px_rgba(230,220,180,0.1)] backdrop-blur-sm">
+          <GlowEffect mode="breathe" blur="high" colors={['#fcd34d', '#f59e0b', '#6366f1', 'transparent']} />
+          <LullowBorderBeam duration={12} glowOpacity={0.45} />
+          <NinoFox size={64} />
         </div>
         <div>
           <h1 className="font-display text-3xl font-light text-moon-100 text-glow sm:text-4xl">
@@ -139,7 +144,10 @@ function CheckInScreen({ childId, onResult, onError }: CheckInScreenProps) {
       </div>
 
       <div className="flex flex-col items-center gap-3">
-        <MicButton onBlob={handleVoiceBlob} onError={setMicErr} disabled={busy} />
+        <div className="relative">
+          <GlowEffect mode="breathe" blur="high" colors={['#fcd34d', '#f59e0b', '#6366f1', 'transparent']} />
+          <MicButton onBlob={handleVoiceBlob} onError={setMicErr} disabled={busy} />
+        </div>
         <span className="text-sm font-light text-moon-500">
           {busy ? 'Listening...' : 'Hold to talk'}
         </span>
@@ -171,8 +179,9 @@ function CheckInScreen({ childId, onResult, onError }: CheckInScreenProps) {
           type="button"
           onClick={() => submit(textInput)}
           disabled={!textInput.trim() || busy}
-          className="mt-3 min-h-[48px] w-full rounded-2xl border border-night-600/70 bg-night-800/60 px-5 py-3 font-light text-moon-200 transition-all duration-300 hover:border-glow-amber/50 hover:text-glow-amber disabled:cursor-not-allowed disabled:opacity-40"
+          className="relative mt-3 min-h-[48px] w-full overflow-hidden rounded-2xl border border-night-600/70 bg-night-800/60 px-5 py-3 font-light text-moon-200 transition-all duration-300 hover:border-glow-amber/50 hover:text-glow-amber disabled:cursor-not-allowed disabled:opacity-40"
         >
+          {textInput.trim() && !busy && <LullowBorderBeam duration={6} glowOpacity={0.7} />}
           {busy ? 'Thinking...' : 'Start my story'}
         </button>
       </div>
@@ -257,7 +266,7 @@ function AudioStoryPlayer({ story, onDone }: { story: Story; onDone: () => void 
         <h2 className="mb-2 text-2xl font-light text-moon-100 text-glow">{story.title}</h2>
         <p className="text-xs uppercase tracking-widest text-moon-500">{story.plan.setting || ''}</p>
       </div>
-      <div className="max-h-72 w-full overflow-y-auto rounded-2xl border border-night-700/40 bg-night-900/35 p-5 text-lg font-light leading-relaxed text-moon-200 space-y-4">
+      <div className="liquid-glass scrollbar-thin max-h-72 w-full overflow-y-auto rounded-2xl border border-night-700/40 bg-night-900/35 p-5 text-lg font-light leading-relaxed text-moon-200 space-y-4">
         {paragraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
       </div>
       {!started ? (
@@ -267,8 +276,9 @@ function AudioStoryPlayer({ story, onDone }: { story: Story; onDone: () => void 
             unlockAudio()
             setStarted(true)
           }}
-          className="rounded-2xl border border-night-600 bg-night-800/60 px-7 py-3 font-light text-moon-200 transition-colors duration-300 hover:border-glow-amber/50 hover:text-glow-amber"
+          className="relative overflow-hidden rounded-2xl border border-night-600 bg-night-800/60 px-7 py-3 font-light text-moon-200 transition-colors duration-300 hover:border-glow-amber/50 hover:text-glow-amber"
         >
+          <LullowBorderBeam duration={6} glowOpacity={0.7} />
           Play narration
         </button>
       ) : (
@@ -372,9 +382,10 @@ function VisualStoryPlayer({ story, onDone }: { story: Story; onDone: () => void
       </div>
 
       <div
-        className="relative overflow-hidden rounded-2xl border border-night-700/40"
+        className="relative overflow-hidden rounded-2xl border border-amber-300/20"
         style={{ width: '100%', maxWidth: 500, aspectRatio: '16/9', background: '#0d1240' }}
       >
+        <LullowBorderBeam duration={10} glowOpacity={0.5} />
         {scene.clip_url ? (
           <video
             ref={videoRef}
@@ -408,14 +419,14 @@ function VisualStoryPlayer({ story, onDone }: { story: Story; onDone: () => void
               return !value
             })
           }}
-          className="rounded-2xl border border-night-600/70 bg-night-900/45 px-5 py-2.5 text-sm font-light text-moon-400 transition-colors duration-300 hover:border-moon-500 hover:text-moon-200"
+          className="liquid-glass rounded-2xl border border-night-600/70 bg-night-900/45 px-5 py-2.5 text-sm font-light text-moon-400 transition-colors duration-300 hover:border-moon-500 hover:text-moon-200"
         >
           {paused ? 'Resume' : 'Pause'}
         </button>
         <button
           type="button"
           onClick={skipScene}
-          className="rounded-2xl border border-night-600/70 bg-night-900/45 px-5 py-2.5 text-sm font-light text-moon-400 transition-colors duration-300 hover:border-glow-amber/50 hover:text-glow-amber"
+          className="liquid-glass rounded-2xl border border-night-600/70 bg-night-900/45 px-5 py-2.5 text-sm font-light text-moon-400 transition-colors duration-300 hover:border-glow-amber/50 hover:text-glow-amber"
         >
           Next
         </button>
@@ -428,7 +439,10 @@ function GoodnightScreen({ onRestart }: { onRestart: () => void }) {
   const navigate = useNavigate()
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 animate-fade-in">
-      <NinoFox size={72} />
+      <div className="relative">
+        <GlowEffect mode="breathe" blur="high" colors={['#fcd34d', '#f59e0b', '#6366f1', 'transparent']} energy={0.05} />
+        <NinoFox size={72} />
+      </div>
       <p className="text-center text-2xl font-light text-moon-300 text-glow">
         Sweet dreams.
       </p>
@@ -533,6 +547,11 @@ export default function ChildMode() {
   return (
     <div className="relative min-h-screen moonlit-mode">
       <NightSky />
+      {/* Celestial animated gradient layered over the starfield — low-stimulation,
+          calm deep-indigo palette, pinned behind content and click-through. */}
+      <div className="pointer-events-none fixed inset-0 -z-10 opacity-70">
+        <BackgroundGradientAnimation theme="deep_indigo" size="50%" />
+      </div>
 
       {showHelpButton && (
         <button

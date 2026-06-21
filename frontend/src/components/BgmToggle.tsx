@@ -14,7 +14,7 @@ export default function BgmToggle() {
       aria-label={muted ? 'Turn lullaby music on' : 'Turn lullaby music off'}
       aria-pressed={!muted}
       title={muted ? 'Lullaby music: off' : 'Lullaby music: on'}
-      className="fixed bottom-4 left-4 z-50 w-11 h-11 rounded-full bg-black/15 hover:bg-black/25 backdrop-blur-sm flex items-center justify-center text-xl transition-colors duration-200 focus:outline-none focus-visible:ring-4 focus-visible:ring-lavender-200/50"
+      className="liquid-glass fixed bottom-4 left-4 z-50 flex h-11 w-11 items-center justify-center rounded-full border border-amber-300/20 bg-black/40 text-xl shadow-[0_0_18px_rgba(251,191,36,0.18)] backdrop-blur-md transition-colors duration-200 hover:border-amber-300/40 hover:bg-black/55 focus:outline-none focus-visible:ring-4 focus-visible:ring-amber-300/40"
     >
       {muted ? '🔇' : '🎵'}
     </button>

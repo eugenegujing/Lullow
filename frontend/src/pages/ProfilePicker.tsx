@@ -13,6 +13,10 @@ import type { LocalProfile } from '../lib/profileStore'
 import { startBgm } from '../lib/bgm'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
+import BackgroundGradientAnimation from '../components/BackgroundGradientAnimation'
+import LullowLogo from '../components/LullowLogo'
+import LullowBorderBeam from '../components/LullowBorderBeam'
+import GlowingEffect from '../components/GlowingEffect'
 
 const dotStars = [
   'left-[5%] top-[70%] h-2 w-2',
@@ -52,20 +56,27 @@ export default function ProfilePicker() {
 
   if (!ready) {
     return (
-      <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#111940]">
+      <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#0a0f2c]">
         <DreamscapeBackdrop />
-        <div className="dream-glow-pulse relative h-16 w-16 rounded-full border border-[#ffe9b8]/60 bg-[#fff1c9]/20 shadow-[0_0_70px_rgba(255,228,178,0.5)]" />
+        <div className="pointer-events-none absolute inset-0 opacity-60">
+          <BackgroundGradientAnimation theme="deep_indigo" size="55%" />
+        </div>
+        <div className="dream-glow-pulse relative z-10 h-16 w-16 rounded-full border border-[#ffe9b8]/60 bg-[#fff1c9]/20 shadow-[0_0_70px_rgba(255,228,178,0.5)]" />
       </div>
     )
   }
 
   return (
-    <div className="moonlit-mode relative flex min-h-[100dvh] flex-col overflow-hidden bg-[#111940] px-5 py-6 text-[#fff3da] sm:px-8">
+    <div className="moonlit-mode relative flex min-h-[100dvh] flex-col overflow-hidden bg-[#0a0f2c] px-5 py-6 text-[#fff3da] sm:px-8">
       <DreamscapeBackdrop />
+      <div className="pointer-events-none absolute inset-0 opacity-60">
+        <BackgroundGradientAnimation theme="deep_indigo" size="55%" />
+      </div>
 
       <header className="relative z-10 mx-auto flex w-full max-w-[1030px] items-center justify-between gap-4">
-        <div className="flex items-center gap-3" aria-label="Lullow">
-          <LullowMark className="h-10 w-10 shrink-0 drop-shadow-[0_0_7px_rgba(246,208,137,0.6)] sm:h-12 sm:w-12" />
+        <div className="flex items-center gap-2" aria-label="Lullow">
+          <LullowLogo size={52} className="shrink-0 sm:hidden" animated={false} />
+          <LullowLogo size={62} className="hidden shrink-0 sm:inline-flex" animated={false} />
           <span className="dreamscape-font text-3xl font-bold tracking-wide text-[#fff0cf] drop-shadow-[0_0_14px_rgba(255,225,180,0.55)] sm:text-4xl">
             Lullow
           </span>
@@ -78,8 +89,9 @@ export default function ProfilePicker() {
             }
           }}
           disabled={profiles.length === 0}
-          className="rounded-full border border-[#b9915c]/45 bg-[#fff0cf] px-5 py-2.5 text-base font-medium text-[#4b3828] shadow-[0_0_26px_rgba(255,218,162,0.75),inset_0_2px_2px_rgba(255,255,255,0.8)] transition duration-400 hover:scale-[1.03] hover:bg-[#fff6e0] disabled:cursor-not-allowed disabled:opacity-45 sm:px-7"
+          className="relative overflow-hidden rounded-full border border-[#b9915c]/45 bg-[#fff0cf] px-5 py-2.5 text-base font-medium text-[#4b3828] shadow-[0_0_26px_rgba(255,218,162,0.75),inset_0_2px_2px_rgba(255,255,255,0.8)] transition duration-400 hover:scale-[1.03] hover:bg-[#fff6e0] disabled:cursor-not-allowed disabled:opacity-45 sm:px-7"
         >
+          {profiles.length > 0 && <LullowBorderBeam duration={8} glowOpacity={0.5} />}
           Parent dashboard
         </button>
       </header>
@@ -103,7 +115,8 @@ export default function ProfilePicker() {
               onClick={() => navigate('/create')}
               className="dream-profile-card flex w-28 flex-col items-center gap-3 text-center transition duration-600 ease-out group-hover/list:opacity-80 hover:-translate-y-1 hover:opacity-100 focus-visible:-translate-y-1 focus-visible:opacity-100 focus:outline-none sm:w-32"
             >
-              <span className="dream-glow-pulse flex h-24 w-24 items-center justify-center rounded-full border border-[#ffe7bd]/75 bg-[radial-gradient(circle_at_35%_30%,rgba(255,255,255,0.4),rgba(88,82,108,0.72)_58%,rgba(37,38,73,0.74)_100%)] text-6xl font-light text-[#ffe9be] shadow-[0_0_34px_rgba(255,223,178,0.58),inset_0_2px_12px_rgba(255,255,255,0.2)] sm:h-28 sm:w-28">
+              <span className="dream-glow-pulse relative flex h-24 w-24 items-center justify-center rounded-full border border-[#ffe7bd]/75 bg-[radial-gradient(circle_at_35%_30%,rgba(255,255,255,0.4),rgba(88,82,108,0.72)_58%,rgba(37,38,73,0.74)_100%)] text-6xl font-light text-[#ffe9be] shadow-[0_0_34px_rgba(255,223,178,0.58),inset_0_2px_12px_rgba(255,255,255,0.2)] sm:h-28 sm:w-28">
+                <LullowBorderBeam duration={9} glowOpacity={0.55} />
                 +
               </span>
               <span className="text-lg font-medium text-[#fff1dc] drop-shadow-[0_2px_8px_rgba(9,11,47,0.75)]">
@@ -174,7 +187,8 @@ function ProfileCard({ entry, busy, onOpen, onEdit, onDelete }: CardProps) {
         disabled={busy}
         className="flex w-full flex-col items-center gap-3 transition duration-600 ease-out disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#ffd98f]/30"
       >
-        <span className="flex h-24 w-24 items-center justify-center rounded-full border-[3px] border-[#ffe8bd] bg-[#fff1d2] p-1 shadow-[0_0_34px_rgba(255,223,178,0.58),inset_0_0_0_4px_rgba(115,82,55,0.18)] transition duration-600 group-hover/profile:shadow-[0_0_48px_rgba(255,223,178,0.78),inset_0_0_0_4px_rgba(115,82,55,0.18)] sm:h-28 sm:w-28">
+        <span className="relative flex h-24 w-24 items-center justify-center rounded-full border-[3px] border-[#ffe8bd] bg-[#fff1d2] p-1 shadow-[0_0_34px_rgba(255,223,178,0.58),inset_0_0_0_4px_rgba(115,82,55,0.18)] transition duration-600 group-hover/profile:shadow-[0_0_48px_rgba(255,223,178,0.78),inset_0_0_0_4px_rgba(115,82,55,0.18)] sm:h-28 sm:w-28">
+          <GlowingEffect glowColor="rgba(251, 191, 36, 0.35)" proximity={80} spread={50} />
           <PortraitAvatar name={profile.name || 'Lullow'} seed={profile.child_id} />
         </span>
         <span className="max-w-full truncate text-lg font-medium text-[#fff1dc] drop-shadow-[0_2px_8px_rgba(9,11,47,0.75)]">
@@ -242,45 +256,6 @@ function DreamscapeBackdrop() {
         />
       ))}
     </div>
-  )
-}
-
-// The Lullow brand glyph — a glowing line-art bell lamp over an open book,
-// with a small sparkle. Drawn as vector SVG so it stays crisp at any size.
-function LullowMark({ className = '' }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 100 100"
-      role="img"
-      aria-label="Lullow"
-      fill="none"
-      stroke="#f6d089"
-      strokeWidth={3.4}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      {/* lamp arch */}
-      <path d="M33 62 V40 C33 23 67 23 67 40 V62" />
-      {/* bell: stem, dome, rim */}
-      <path d="M50 26 V34" />
-      <path d="M44 47 C44 37 56 37 56 47" />
-      <path d="M41 47 Q50 51 59 47" />
-      {/* glowing filament winding down into the book */}
-      <path d="M50 51 C57 55 43 59 50 63 C57 66 45 67 50 70" />
-      {/* open book */}
-      <path d="M50 70 C40 65 24 65 13 71 V77 C24 71 40 71 50 76 C60 71 76 71 87 77 V71 C76 65 60 65 50 70 Z" />
-      <path d="M50 70 V76" />
-      {/* bell knob + clapper */}
-      <circle cx="50" cy="35" r="1.7" fill="#f6d089" stroke="none" />
-      <circle cx="50" cy="50" r="1.7" fill="#f6d089" stroke="none" />
-      {/* sparkle */}
-      <path
-        d="M80 17 C80.8 22 82 23.2 87 24 C82 24.8 80.8 26 80 31 C79.2 26 78 24.8 73 24 C78 23.2 79.2 22 80 17 Z"
-        fill="#f6d089"
-        stroke="none"
-      />
-    </svg>
   )
 }
 
