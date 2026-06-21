@@ -22,6 +22,7 @@ import NightSky from '../components/NightSky'
 import NinoFox from '../components/NinoFox'
 import BackgroundGradientAnimation from '../components/BackgroundGradientAnimation'
 import GlowEffect from '../components/GlowEffect'
+import BgmToggle from '../components/BgmToggle'
 import { useProfiles } from '../context/ProfileContext'
 import { startBgm } from '../lib/bgm'
 import { getNarrationAudio, unlockAudio, useAudio } from '../hooks/useAudio'
@@ -557,6 +558,10 @@ export default function ChildMode() {
           Help
         </button>
       )}
+
+      {/* Lullaby music control — only inside the story flow (BGM starts on the
+          Home "Let's start" tap), never on the Home screen. */}
+      {screen !== 'home' && <BgmToggle />}
 
       {(showHelp || screen === 'escalation') && (
         <HelpScreen
