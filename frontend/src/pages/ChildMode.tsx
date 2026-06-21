@@ -21,7 +21,6 @@ import MicButton from '../components/MicButton'
 import NightSky from '../components/NightSky'
 import NinoFox from '../components/NinoFox'
 import BackgroundGradientAnimation from '../components/BackgroundGradientAnimation'
-import LullowBorderBeam from '../components/LullowBorderBeam'
 import GlowEffect from '../components/GlowEffect'
 import { useProfiles } from '../context/ProfileContext'
 import { startBgm } from '../lib/bgm'
@@ -64,7 +63,6 @@ function TapScreen({
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 animate-fade-in">
         <div className="relative flex h-28 w-28 items-center justify-center rounded-full border border-amber-300/25 bg-night-900/40 shadow-[0_0_70px_rgba(230,220,180,0.1)] backdrop-blur-sm">
           <GlowEffect mode="breathe" blur="high" colors={['#fcd34d', '#f59e0b', '#6366f1', 'transparent']} />
-          <LullowBorderBeam duration={12} glowOpacity={0.45} />
           <NinoFox size={64} />
         </div>
         <div>
@@ -179,9 +177,8 @@ function CheckInScreen({ childId, onResult, onError }: CheckInScreenProps) {
           type="button"
           onClick={() => submit(textInput)}
           disabled={!textInput.trim() || busy}
-          className="relative mt-3 min-h-[48px] w-full overflow-hidden rounded-2xl border border-night-600/70 bg-night-800/60 px-5 py-3 font-light text-moon-200 transition-all duration-300 hover:border-glow-amber/50 hover:text-glow-amber disabled:cursor-not-allowed disabled:opacity-40"
+          className="mt-3 min-h-[48px] w-full rounded-2xl border border-night-600/70 bg-night-800/60 px-5 py-3 font-light text-moon-200 transition-all duration-300 hover:border-glow-amber/50 hover:text-glow-amber disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {textInput.trim() && !busy && <LullowBorderBeam duration={6} glowOpacity={0.7} />}
           {busy ? 'Thinking...' : 'Start my story'}
         </button>
       </div>
@@ -276,9 +273,8 @@ function AudioStoryPlayer({ story, onDone }: { story: Story; onDone: () => void 
             unlockAudio()
             setStarted(true)
           }}
-          className="relative overflow-hidden rounded-2xl border border-night-600 bg-night-800/60 px-7 py-3 font-light text-moon-200 transition-colors duration-300 hover:border-glow-amber/50 hover:text-glow-amber"
+          className="rounded-2xl border border-night-600 bg-night-800/60 px-7 py-3 font-light text-moon-200 transition-colors duration-300 hover:border-glow-amber/50 hover:text-glow-amber"
         >
-          <LullowBorderBeam duration={6} glowOpacity={0.7} />
           Play narration
         </button>
       ) : (
@@ -385,7 +381,6 @@ function VisualStoryPlayer({ story, onDone }: { story: Story; onDone: () => void
         className="relative overflow-hidden rounded-2xl border border-amber-300/20"
         style={{ width: '100%', maxWidth: 500, aspectRatio: '16/9', background: '#0d1240' }}
       >
-        <LullowBorderBeam duration={10} glowOpacity={0.5} />
         {scene.clip_url ? (
           <video
             ref={videoRef}
