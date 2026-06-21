@@ -18,7 +18,12 @@ const BASE_VOLUME = 0.18 // quiet bed, well under narration
 const DUCK_VOLUME = 0.05 // lowered while narration plays
 const MUTE_KEY = 'lullow.bgmMuted'
 
+const FADE_MS = 550 // smooth ramp toward a new volume (no hard jumps)
+const UNDUCK_GRACE_MS = 600 // wait after narration stops before raising BGM
+
 let el: HTMLAudioElement | null = null
+let fadeRaf: number | null = null // in-flight volume ramp
+let unduckTimer: ReturnType<typeof setTimeout> | null = null // debounced un-duck
 
 function muted(): boolean {
   try {
@@ -39,10 +44,52 @@ function getEl(): HTMLAudioElement {
   return el
 }
 
+/** Cancel any in-flight volume ramp. */
+function cancelFade(): void {
+  if (fadeRaf !== null) {
+    cancelAnimationFrame(fadeRaf)
+    fadeRaf = null
+  }
+}
+
+/** Smoothly ramp the BGM volume toward `target` over FADE_MS (rAF-based). Any
+ *  previous ramp is cancelled first so changes never stack or jump abruptly. */
+function fadeTo(target: number): void {
+  cancelFade()
+  const a = el
+  if (!a) return
+  const from = a.volume
+  if (Math.abs(from - target) < 0.001) {
+    a.volume = target
+    return
+  }
+  const start = performance.now()
+  const step = (now: number) => {
+    const t = Math.min(1, (now - start) / FADE_MS)
+    a.volume = from + (target - from) * t
+    if (t < 1) {
+      fadeRaf = requestAnimationFrame(step)
+    } else {
+      fadeRaf = null
+    }
+  }
+  fadeRaf = requestAnimationFrame(step)
+}
+
+/** Cancel a pending (debounced) un-duck, e.g. when the next scene starts. */
+function cancelPendingUnduck(): void {
+  if (unduckTimer !== null) {
+    clearTimeout(unduckTimer)
+    unduckTimer = null
+  }
+}
+
 /** Start (or resume) the looping lullaby. Call from a click/tap. */
 export function startBgm(): void {
   if (muted()) return
   const a = getEl()
+  cancelFade()
+  cancelPendingUnduck()
   a.volume = BASE_VOLUME
   a.play().catch(() => {
     /* autoplay blocked until a gesture, or file not present — fail soft */
@@ -53,14 +100,29 @@ export function stopBgm(): void {
   if (el) el.pause()
 }
 
-/** Lower the music while narration speaks. */
+/**
+ * Lower the music while narration speaks. Smoothly fades down and cancels any
+ * pending un-duck, so back-to-back per-scene narration keeps the BGM steadily
+ * ducked instead of popping back up between scenes.
+ */
 export function duckBgm(): void {
-  if (el && !muted()) el.volume = DUCK_VOLUME
+  if (!el || muted()) return
+  cancelPendingUnduck()
+  fadeTo(DUCK_VOLUME)
 }
 
-/** Restore the music level after narration ends. */
+/**
+ * Restore the music level after narration ends — but only after a short grace
+ * period, so the next scene's duckBgm() can cancel it. BGM rises (smoothly)
+ * only once narration has truly stopped.
+ */
 export function unduckBgm(): void {
-  if (el && !muted()) el.volume = BASE_VOLUME
+  if (!el || muted()) return
+  cancelPendingUnduck()
+  unduckTimer = setTimeout(() => {
+    unduckTimer = null
+    if (el && !muted()) fadeTo(BASE_VOLUME)
+  }, UNDUCK_GRACE_MS)
 }
 
 export function isBgmMuted(): boolean {
@@ -76,6 +138,10 @@ export function toggleBgmMuted(): boolean {
     /* ignore */
   }
   if (el) {
+    // A deliberate user action: cancel any in-flight ramp / pending un-duck and
+    // set the level directly so the toggle feels immediate.
+    cancelFade()
+    cancelPendingUnduck()
     if (next) el.pause()
     else {
       el.volume = BASE_VOLUME

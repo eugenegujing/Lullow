@@ -68,9 +68,11 @@ export function useAudio() {
         media.webkitPreservesPitch = true
         el.playbackRate = NARRATION_RATE
         setPlaying(true)
-        duckBgm() // soften the lullaby while narration speaks
+        duckBgm() // smoothly soften the lullaby while narration speaks
         const done = () => {
           setPlaying(false)
+          // Grace-delayed: the next scene's duckBgm() cancels this, so the BGM
+          // stays steadily ducked across per-scene narration instead of popping.
           unduckBgm()
           resolve()
         }
@@ -89,7 +91,7 @@ export function useAudio() {
       sharedAudio.src = ''
     }
     setPlaying(false)
-    unduckBgm() // restore the lullaby level when narration stops
+    unduckBgm() // grace-delayed restore; cancelled if another scene starts
   }, [])
 
   // Stop audio when the owning component unmounts (navigation, screen switch).
