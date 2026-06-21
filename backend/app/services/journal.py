@@ -72,11 +72,6 @@ def build_journal(child_id: str) -> GrowthJournal:
         emotion_counter[resolved_emotion.value] += 1
         themes.append(story.plan.theme)
 
-        # Collect helpful elements from ritual names and memory used
-        if story.ritual and story.ritual.name:
-            if story.ritual.name not in helpful_elements:
-                helpful_elements.append(story.ritual.name)
-
         entries.append(
             JournalEntry(
                 story_id=story.story_id,

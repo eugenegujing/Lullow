@@ -108,7 +108,7 @@ def story_approve(story_id: str) -> Story:
     theme = story.plan.theme
     if theme and theme not in world.past_themes:
         world = world.model_copy(update={"past_themes": world.past_themes + [theme]})
-    ritual_name = story.ritual.name
+    ritual_name = story.plan.ritual
     if ritual_name and ritual_name not in world.successful_rituals:
         world = world.model_copy(
             update={"successful_rituals": world.successful_rituals + [ritual_name]}

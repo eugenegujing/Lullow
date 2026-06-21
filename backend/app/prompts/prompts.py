@@ -143,17 +143,6 @@ Return STRICT JSON only:
 """
 
 # --------------------------------------------------------------------------- #
-# Bedtime ritual
-# --------------------------------------------------------------------------- #
-RITUAL_SYSTEM = f"""{VOICE_TONE_RULES}
-
-Write a short calming bedtime ritual to end the story (e.g. three deep breaths,
-blow three stars into the sky, name one brave thing from today). Soft, short,
-sleep-oriented. Return STRICT JSON only:
-{{ "name": string, "steps": [short strings], "spoken": string (read aloud) }}
-"""
-
-# --------------------------------------------------------------------------- #
 # Scene splitting for the image-first visual pipeline
 # --------------------------------------------------------------------------- #
 SCENE_SPLIT_SYSTEM = f"""{VOICE_TONE_RULES}

@@ -5,10 +5,10 @@
  *   • LIGHT warm theme  — home / greeting, check-in, and the "weave my story"
  *     reflection step (gentle, premium, daytime-soft).
  *   • DARK moonlit theme — the actual STORY EXPERIENCE (generating, story
- *     player, breathing ritual, goodnight). Low-stimulation bedtime safety.
+ *     player, goodnight). Low-stimulation bedtime safety.
  *
  * Flow: home → check-in → reflecting → (escalation help | story) →
- *       story player → ritual → goodnight.
+ *       story player → goodnight.
  *
  * All network calls use the ACTIVE child_id from ProfileContext.
  */
@@ -36,7 +36,6 @@ import NightSky from '../components/NightSky'
 import NinoFox from '../components/NinoFox'
 import MicButton from '../components/MicButton'
 import HelpScreen from '../components/HelpScreen'
-import BreathingCircle from '../components/BreathingCircle'
 import ProfileSwitcher from '../components/ProfileSwitcher'
 import Button from '../components/ui/Button'
 import Avatar from '../components/ui/Avatar'
@@ -54,7 +53,6 @@ type Screen =
   | 'generating'
   | 'story-audio'
   | 'story-visual'
-  | 'ritual'
   | 'goodnight'
 
 // Screens that use the dark moonlit "story experience" world
@@ -62,7 +60,6 @@ const MOONLIT_SCREENS: Screen[] = [
   'generating',
   'story-audio',
   'story-visual',
-  'ritual',
   'goodnight',
 ]
 
@@ -608,68 +605,6 @@ function VisualStoryPlayer({ story, onDone }: VisualStoryPlayerProps) {
 }
 
 // ------------------------------------------------------------------ //
-// Ritual (DARK)
-// ------------------------------------------------------------------ //
-interface RitualScreenProps {
-  story: Story
-  onDone: () => void
-}
-
-function RitualScreen({ story, onDone }: RitualScreenProps) {
-  const { play } = useAudio()
-  const [started, setStarted] = useState(false)
-  const ritual = story.ritual
-
-  const startRitual = async () => {
-    setStarted(true)
-    try {
-      const tts = await postTTS(ritual.spoken)
-      await play(tts.audio_base64, tts.mime_type)
-    } catch {
-      /* TTS optional — ritual still displays */
-    }
-  }
-
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen gap-8 px-6 max-w-md mx-auto animate-fade-in">
-      <h2 className="text-2xl text-moon-200 font-light text-glow text-center">{ritual.name}</h2>
-
-      <BreathingCircle />
-
-      <div className="w-full space-y-3">
-        {ritual.steps.map((step, i) => (
-          <div
-            key={i}
-            className="flex items-start gap-3 px-5 py-3 rounded-2xl bg-night-800/40 border border-night-700/30"
-          >
-            <span className="text-glow-amber text-sm mt-0.5">✦</span>
-            <p className="text-moon-300 font-light leading-snug">{step}</p>
-          </div>
-        ))}
-      </div>
-
-      {!started && (
-        <button
-          type="button"
-          onClick={startRitual}
-          className="px-8 py-3 rounded-3xl bg-night-700/60 border border-night-500/60 text-moon-200 font-light hover:border-glow-amber/60 transition-all duration-400"
-        >
-          ▶ Hear the ritual
-        </button>
-      )}
-
-      <button
-        type="button"
-        onClick={onDone}
-        className="mt-2 text-sm text-night-500 hover:text-moon-500 transition-colors duration-400"
-      >
-        Goodnight ✦
-      </button>
-    </div>
-  )
-}
-
-// ------------------------------------------------------------------ //
 // Goodnight (DARK)
 // ------------------------------------------------------------------ //
 function GoodnightScreen({ onRestart }: { onRestart: () => void }) {
@@ -765,11 +700,7 @@ export default function ChildMode() {
   }, [checkInResp, childId, visualMode])
 
   const handleStoryDone = useCallback(() => {
-    setLampMood('calm')   // breathing ritual → warm moonlight gold
-    setScreen('ritual')
-  }, [])
-  const handleRitualDone = useCallback(() => {
-    lampOff()             // goodnight → lamp fades off
+    lampOff()             // story finished → lamp fades off, straight to goodnight
     setScreen('goodnight')
   }, [])
   const handleRestart = useCallback(() => {
@@ -893,7 +824,6 @@ export default function ChildMode() {
       {screen === 'story-visual' && story && (
         <VisualStoryPlayer story={story} onDone={handleStoryDone} />
       )}
-      {screen === 'ritual' && story && <RitualScreen story={story} onDone={handleRitualDone} />}
       {screen === 'goodnight' && <GoodnightScreen onRestart={handleRestart} />}
     </div>
   )

@@ -29,7 +29,6 @@ def test_generate_story_returns_complete_story():
     assert story.title.strip() != ""
     assert story.body.strip() != ""
     assert story.plan is not None
-    assert story.ritual is not None
     assert story.review_trail is not None
     assert story.safety_evaluation is not None
     assert story.emotion is not None

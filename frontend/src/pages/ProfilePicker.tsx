@@ -64,12 +64,11 @@ export default function ProfilePicker() {
       <DreamscapeBackdrop />
 
       <header className="relative z-10 mx-auto flex w-full max-w-[1030px] items-center justify-between gap-4">
-        <div className="flex items-center gap-3" aria-label="Lullow">
-          <SmallCrescent className="h-9 w-9" />
-          <span className="dreamscape-font text-3xl font-bold tracking-wide text-[#fff0cf] drop-shadow-[0_0_14px_rgba(255,225,180,0.55)] sm:text-4xl">
-            Lullow
-          </span>
-        </div>
+        <img
+          src="/logo.png"
+          alt="Lullow — Light & Lore"
+          className="h-14 w-auto rounded-2xl drop-shadow-[0_0_20px_rgba(255,225,180,0.4)] sm:h-16"
+        />
         <button
           type="button"
           onClick={() => {
@@ -93,7 +92,7 @@ export default function ProfilePicker() {
             </h1>
           </div>
           <p className="mt-5 max-w-[610px] text-base leading-relaxed text-[#fff1df] drop-shadow-[0_1px_8px_rgba(18,21,55,0.7)] sm:text-lg">
-            Choose a profile and Lullow will shape the check-in, story world, and ritual around
+            Choose a profile and Lullow will shape the check-in, story, and bedtime around
             the child who is here now.
           </p>
 
@@ -242,14 +241,6 @@ function DreamscapeBackdrop() {
         />
       ))}
     </div>
-  )
-}
-
-function SmallCrescent({ className = '' }: { className?: string }) {
-  return (
-    <span className={`dream-glow-pulse relative inline-flex rounded-full bg-[#ffe9b8] shadow-[0_0_22px_rgba(255,229,184,0.75)] ${className}`} aria-hidden="true">
-      <span className="absolute -right-1 -top-1 h-full w-full rounded-full bg-[#263467]" />
-    </span>
   )
 }
 

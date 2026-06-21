@@ -120,7 +120,7 @@ def test_world_save_and_load():
 def _make_story(story_id: str, child_id: str, created_at: str):
     """Build a minimal Story object for testing."""
     from app.models.schemas import (
-        Emotion, Story, StoryPlan, Ritual, ReviewTrail, SafetyEvaluation, VisualMode
+        Emotion, Story, StoryPlan, ReviewTrail, SafetyEvaluation, VisualMode
     )
     return Story(
         story_id=story_id,
@@ -133,11 +133,6 @@ def _make_story(story_id: str, child_id: str, created_at: str):
             conflict_intensity="low",
             resolution="sleep comes softly",
             ritual="three moon breaths",
-        ),
-        ritual=Ritual(
-            name="Three Moon Breaths",
-            steps=["breathe in", "breathe out"],
-            spoken="Let's breathe together.",
         ),
         review_trail=ReviewTrail(
             story_id=story_id,

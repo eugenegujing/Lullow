@@ -212,12 +212,6 @@ class StoryScene(BaseModel):
     text_hash: Optional[str] = None
 
 
-class Ritual(BaseModel):
-    name: str
-    steps: list[str]
-    spoken: str  # the gentle spoken ritual, voice/tone compliant
-
-
 class ReviewTrail(BaseModel):
     story_id: str
     title: str
@@ -238,7 +232,6 @@ class Story(BaseModel):
     body: str                       # full narration text
     plan: StoryPlan
     scenes: list[StoryScene] = Field(default_factory=list)
-    ritual: Ritual
     review_trail: ReviewTrail
     safety_evaluation: SafetyEvaluation
     emotion: "Emotion"              # resolved emotion for this story

@@ -8,7 +8,6 @@ Runs the full pipeline per plan §15.2:
   → build plan
   → generate story body
   → evaluate safety; regenerate once if failed; fall back to safe mock
-  → generate ritual
   → log eval to Arize
   → build review trail
   → save story to memory (only stories that passed safety)
@@ -26,7 +25,6 @@ from ..models.schemas import (
     ChildProfile,
     EmotionExtraction,
     ParentSafetySettings,
-    Ritual,
     SafetyEscalation,
     Story,
     StoryGenerateResponse,
@@ -42,7 +40,6 @@ from .emotion import extract_emotion
 from .planner import build_plan
 from .prompt_agent import prompt_agent
 from .review_trail import build_review_trail
-from .ritual import generate_ritual
 from .safety import detect_escalation, evaluate_story
 from .story_retrieval import index_story_from_context
 
@@ -260,11 +257,7 @@ def generate_story(
             safety_eval = evaluate_story(body, settings)
             used_mock["safety"] = False
 
-    # 7. Generate ritual (deterministic by default — no Claude call)
-    ritual = generate_ritual(plan, profile)
-    used_mock["ritual"] = False  # deterministic; no mock flag needed
-
-    # 8. Log to Arize — assign story_id explicitly (P1-4, no walrus)
+    # 7. Log to Arize — assign story_id explicitly (P1-4, no walrus)
     story_id = _story_id()
     arize_client.log_evaluation(
         story_id,
@@ -277,7 +270,7 @@ def generate_story(
         },
     )
 
-    # 9. Build review trail
+    # 8. Build review trail
     review_trail = build_review_trail(
         story_id, title, req, extraction, plan, settings, memory_used
     )
@@ -285,7 +278,7 @@ def generate_story(
     # Visual mode: use request override or parent default
     visual_mode = req.visual_mode or settings.visual_mode or VisualMode.LOW_STIMULATION
 
-    # 10. Assemble story — persist resolved emotion (P2-3)
+    # 9. Assemble story — persist resolved emotion (P2-3)
     story = Story(
         story_id=story_id,
         child_id=req.child_id,
@@ -293,7 +286,6 @@ def generate_story(
         body=body,
         plan=plan,
         scenes=[],
-        ritual=ritual,
         review_trail=review_trail,
         safety_evaluation=safety_eval,
         emotion=extraction.emotion,
@@ -301,7 +293,7 @@ def generate_story(
         created_at=_now_iso(),
     )
 
-    # 11. Save to memory (only stories whose safety_evaluation.passed is True)
+    # 10. Save to memory (only stories whose safety_evaluation.passed is True)
     memory_service.save_story(story)
     index_story_from_context(story, extraction, profile, world, settings)
 

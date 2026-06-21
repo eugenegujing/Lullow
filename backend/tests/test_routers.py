@@ -287,7 +287,6 @@ def test_story_generate_returns_full_story(seeded_client):
     assert story["title"].strip() != ""
     assert story["body"].strip() != ""
     assert "plan" in story
-    assert "ritual" in story
     assert "review_trail" in story
     assert "safety_evaluation" in story
     assert "emotion" in story

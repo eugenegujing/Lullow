@@ -164,12 +164,6 @@ export interface StoryScene {
   is_clip_mock: boolean
 }
 
-export interface Ritual {
-  name: string
-  steps: string[]
-  spoken: string
-}
-
 export interface ReviewTrail {
   story_id: string
   title: string
@@ -190,7 +184,6 @@ export interface Story {
   body: string
   plan: StoryPlan
   scenes: StoryScene[]
-  ritual: Ritual
   review_trail: ReviewTrail
   safety_evaluation: SafetyEvaluation
   visual_mode: VisualMode
