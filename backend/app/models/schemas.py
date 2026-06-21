@@ -232,6 +232,7 @@ class Story(BaseModel):
     body: str                       # full narration text
     plan: StoryPlan
     scenes: list[StoryScene] = Field(default_factory=list)
+    mood_track: list[str] = Field(default_factory=list)  # lamp colors over the narration (audio-only)
     review_trail: ReviewTrail
     safety_evaluation: SafetyEvaluation
     emotion: "Emotion"              # resolved emotion for this story

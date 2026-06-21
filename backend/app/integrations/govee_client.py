@@ -11,6 +11,7 @@ devices such as the H612F strip light.
 from __future__ import annotations
 
 import logging
+import re
 import threading
 import uuid
 
@@ -90,7 +91,7 @@ _KEYWORDS: list[tuple[tuple[str, ...], str]] = [
     (("fire", "flame", "burn", "ember", "hot"), "fire"),
     (("ocean", "sea", "wave", "water", "river", "lake"), "ocean"),
     (("forest", "tree", "leaf", "meadow", "garden", "grass"), "nature"),
-    (("star", "moon", "night", "midnight"), "night"),
+    (("star", "moon", "moonlight", "moonlit", "night", "midnight"), "night"),
     (("space", "galaxy", "cosmic", "planet", "comet"), "space"),
     (("magic", "spell", "wizard", "fairy", "sparkle", "glow"), "magical"),
     (("dream", "cloud", "float", "drift"), "dreamy"),
@@ -106,10 +107,16 @@ _KEYWORDS: list[tuple[tuple[str, ...], str]] = [
 
 
 def guess_mood(text: str) -> str:
-    """Keyword fallback when Claude doesn't supply a (valid) mood."""
+    """Keyword fallback when Claude doesn't supply a (valid) mood.
+
+    Matches whole words (with a few common inflections) instead of raw
+    substrings, so calming words don't trip dramatic moods — e.g. "warm" no
+    longer matches "war", "made" no longer matches "mad", "wonderful" no longer
+    matches "won".
+    """
     t = (text or "").lower()
     for words, mood in _KEYWORDS:
-        if any(w in t for w in words):
+        if any(re.search(rf"\b{re.escape(w)}(?:s|es|ed|ing|ies|y)?\b", t) for w in words):
             return mood
     return "calm"
 

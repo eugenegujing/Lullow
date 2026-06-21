@@ -27,6 +27,12 @@ function getAudio(): HTMLAudioElement {
   return sharedAudio
 }
 
+/** The shared narration <audio> element — lets callers sync visuals / the
+ *  physical lamp to ACTUAL playback progress (currentTime / duration). */
+export function getNarrationAudio(): HTMLAudioElement {
+  return getAudio()
+}
+
 /** Call INSIDE a user gesture (click/tap) to grant autoplay for the session. */
 export function unlockAudio(): void {
   const el = getAudio()

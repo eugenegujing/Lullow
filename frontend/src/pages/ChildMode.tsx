@@ -39,7 +39,7 @@ import HelpScreen from '../components/HelpScreen'
 import ProfileSwitcher from '../components/ProfileSwitcher'
 import Button from '../components/ui/Button'
 import Avatar from '../components/ui/Avatar'
-import { useAudio, unlockAudio } from '../hooks/useAudio'
+import { useAudio, unlockAudio, getNarrationAudio } from '../hooks/useAudio'
 import { startBgm } from '../lib/bgm'
 
 // ------------------------------------------------------------------ //
@@ -345,6 +345,7 @@ function AudioStoryPlayer({ story, onDone }: AudioStoryPlayerProps) {
   useEffect(() => {
     if (!started || paused) return
     let cancelled = false
+    let cleanupLamp: (() => void) | undefined
 
     const advance = () => {
       if (cancelled) return
@@ -361,11 +362,32 @@ function AudioStoryPlayer({ story, onDone }: AudioStoryPlayerProps) {
       // One CONTINUOUS narration of the whole story — the backend stitches long
       // text into a single clip, so it never plays in disjointed segments.
       if (sceneIndex !== 0) return
-      setLampMood('calm')   // lights-out audio mode → steady warm moonlight
+      // Lights-out audio mode still gets color: drive the lamp from the ACTUAL
+      // narration progress (currentTime / duration) so it stays in sync — and
+      // only AFTER playback starts, not during the (several-second) TTS render.
+      const moods = story.mood_track?.length ? story.mood_track : ['calm']
+      const audioEl = getNarrationAudio()
+      let lastIdx = -1
+      const syncLamp = () => {
+        const dur = audioEl.duration
+        if (!dur || !isFinite(dur)) return
+        const idx = Math.min(
+          moods.length - 1,
+          Math.max(0, Math.floor((audioEl.currentTime / dur) * moods.length)),
+        )
+        if (idx !== lastIdx) {
+          lastIdx = idx
+          setLampMood(moods[idx])
+        }
+      }
+      cleanupLamp = () => audioEl.removeEventListener('timeupdate', syncLamp)
       setLoading(true)
       postTTS(story.body)
         .then(tts => {
           setLoading(false)
+          if (cancelled) return
+          setLampMood(moods[0])   // first mood the instant playback begins
+          audioEl.addEventListener('timeupdate', syncLamp)
           return play(tts.audio_base64, tts.mime_type)
         })
         .then(advance)
@@ -378,6 +400,7 @@ function AudioStoryPlayer({ story, onDone }: AudioStoryPlayerProps) {
     return () => {
       cancelled = true
       stop()
+      if (cleanupLamp) cleanupLamp()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sceneIndex, started, paused])

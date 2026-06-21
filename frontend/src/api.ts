@@ -184,6 +184,7 @@ export interface Story {
   body: string
   plan: StoryPlan
   scenes: StoryScene[]
+  mood_track?: string[]
   review_trail: ReviewTrail
   safety_evaluation: SafetyEvaluation
   visual_mode: VisualMode

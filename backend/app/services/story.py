@@ -21,6 +21,7 @@ import uuid
 from datetime import datetime, timezone
 
 from ..integrations.arize_client import arize_client
+from ..integrations.govee_client import guess_mood
 from ..models.schemas import (
     ChildProfile,
     EmotionExtraction,
@@ -52,6 +53,23 @@ def _story_id() -> str:
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _mood_track(body: str) -> list[str]:
+    """A lightweight per-section mood sequence for the physical lamp.
+
+    Audio-only mode plays the whole story as one continuous narration, so there
+    are no per-scene cues to drive the lamp. We scan the story's paragraphs with
+    the cheap keyword mood guesser (no LLM, no images, zero latency) and collapse
+    consecutive duplicates, giving the lamp a gentle color arc across the story.
+    """
+    paragraphs = [p.strip() for p in body.split("\n\n") if p.strip()] or [body]
+    track: list[str] = []
+    for para in paragraphs:
+        mood = guess_mood(para)
+        if not track or track[-1] != mood:
+            track.append(mood)
+    return track or ["calm"]
 
 
 def _generate_body(
@@ -118,7 +136,7 @@ def _generate_body(
         STORY_GENERATION_SYSTEM,
         user_msg,
         mock={"title": mock_title, "body": mock_body},
-        deep=True,
+        deep=False,  # Sonnet (not Opus) — 2-3x faster, quality is plenty for a bedtime story
         max_tokens=2000,
     )
 
@@ -286,6 +304,7 @@ def generate_story(
         body=body,
         plan=plan,
         scenes=[],
+        mood_track=_mood_track(body),
         review_trail=review_trail,
         safety_evaluation=safety_eval,
         emotion=extraction.emotion,
