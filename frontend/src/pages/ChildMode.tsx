@@ -99,7 +99,7 @@ function HomeScreen({
       </div>
 
       <Button size="lg" onClick={onStart}>
-        Let's get cozy ✦
+        Let's start ✦
       </Button>
 
       <button
