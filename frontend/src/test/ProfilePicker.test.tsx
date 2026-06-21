@@ -89,12 +89,12 @@ describe('ProfilePicker', () => {
     })
   })
 
-  it('redirects to /create when the roster is empty (first run)', async () => {
-    // Empty roster
+  it('keeps the redesigned picker visible when the roster is empty', async () => {
     renderPicker()
 
     await waitFor(() => {
-      expect(screen.getByTestId('create-page')).toBeInTheDocument()
+      expect(screen.getByText(/who is winding down tonight/i)).toBeInTheDocument()
+      expect(screen.getByText(/new profile/i)).toBeInTheDocument()
     })
   })
 
