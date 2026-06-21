@@ -265,7 +265,7 @@ function AudioStoryPlayer({ story, onDone }: { story: Story; onDone: () => void 
         <h2 className="mb-2 text-2xl font-light text-moon-100 text-glow">{story.title}</h2>
         <p className="text-xs uppercase tracking-widest text-moon-500">{story.plan.setting || ''}</p>
       </div>
-      <div className="liquid-glass scrollbar-thin max-h-72 w-full overflow-y-auto rounded-2xl border border-night-700/40 bg-night-900/35 p-5 text-lg font-light leading-relaxed text-moon-200 space-y-4">
+      <div className="scrollbar-thin max-h-72 w-full overflow-y-auto rounded-2xl border border-night-700/40 bg-night-900/45 p-5 text-lg font-light leading-relaxed text-moon-200 space-y-4">
         {paragraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
       </div>
       <span className="text-sm font-light text-moon-500">
