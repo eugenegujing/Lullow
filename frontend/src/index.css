@@ -89,4 +89,82 @@ body {
   .gradient-lavender {
     background: linear-gradient(135deg, #8B7CF6 0%, #A78BFA 100%);
   }
+
+  /* ---------------------------------------------------------------- */
+  /* Dreamscape — the moonlit landing / ProfilePicker only.           */
+  /* ---------------------------------------------------------------- */
+  .dreamscape-font {
+    font-family: Georgia, 'Times New Roman', ui-serif, serif;
+    letter-spacing: 0;
+  }
+  .quiet-grid {
+    background-image:
+      linear-gradient(rgba(36, 33, 46, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(36, 33, 46, 0.04) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: linear-gradient(to bottom, rgba(0,0,0,0.55), transparent 78%);
+  }
+  .surface-sheen {
+    background:
+      linear-gradient(135deg, rgba(255,255,255,0.86), rgba(255,255,255,0.58)),
+      rgba(255,255,255,0.68);
+  }
+  .dream-glow-pulse {
+    animation: dreamGlowPulse 5.8s ease-in-out infinite;
+  }
+  .dream-star-soft {
+    animation: dreamStarSoft 4.8s ease-in-out infinite;
+  }
+  .dream-cloud {
+    animation: dreamCloudFloat 10s ease-in-out infinite;
+  }
+  .dream-mist-left {
+    animation: dreamMistLeft 15s ease-in-out infinite;
+  }
+  .dream-mist-right {
+    animation: dreamMistRight 16s ease-in-out infinite;
+  }
+  .dream-profile-card {
+    animation: dreamProfileArrive 0.75s ease-out both;
+  }
+}
+
+@keyframes dreamGlowPulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.12); }
+}
+
+@keyframes dreamStarSoft {
+  0%, 100% { opacity: 0.68; transform: scale(0.96); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+
+@keyframes dreamCloudFloat {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(12px, -8px, 0); }
+}
+
+@keyframes dreamMistLeft {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-25deg); opacity: 0.86; }
+  50% { transform: translate3d(26px, -10px, 0) rotate(-22deg); opacity: 0.58; }
+}
+
+@keyframes dreamMistRight {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(25deg); opacity: 0.78; }
+  50% { transform: translate3d(-28px, -8px, 0) rotate(22deg); opacity: 0.56; }
+}
+
+@keyframes dreamProfileArrive {
+  0% { opacity: 0; transform: translateY(10px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Respect reduced-motion: drop the dreamscape (and all) animations. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
 }

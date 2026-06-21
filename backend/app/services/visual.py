@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 
+from ..integrations.govee_client import resolve_mood
 from ..integrations.image_client import image_client
 from ..integrations.pika_client import pika_client
 from ..models.schemas import Story, StoryScene, StoryWorld
@@ -35,7 +36,7 @@ def _split_scenes(story: Story, world: StoryWorld) -> list[dict]:
             f"({', '.join(char.traits)})."
         )
 
-    setting = world.recurring_setting or "Moonberry Forest"
+    setting = world.recurring_setting or story.plan.setting or "a soft, cozy place"
 
     mock_scenes = [
         {
@@ -47,17 +48,19 @@ def _split_scenes(story: Story, world: StoryWorld) -> list[dict]:
                 f"A moonlit {setting.lower()}, soft warm glow, gentle stars appearing, "
                 "cozy atmosphere, watercolor storybook style, low saturation, rounded shapes"
             ),
+            "mood": "night",
         },
         {
             "text": (
-                f"{story.plan.main_character or 'a gentle little fox'} curled up "
+                f"{story.plan.main_character or 'a gentle little friend'} curled up "
                 "beneath a blanket of moonbeams, feeling very safe and warm."
             ),
             "image_prompt": (
-                "A small gentle fox curled under a soft moonlit blanket, "
+                "A small gentle animal friend curled under a soft moonlit blanket, "
                 f"{setting.lower()}, warm amber glow, cozy and peaceful, "
                 "storybook illustration, soft colors"
             ),
+            "mood": "cozy",
         },
         {
             "text": (
@@ -69,6 +72,7 @@ def _split_scenes(story: Story, world: StoryWorld) -> list[dict]:
                 "warm golden light, a child sleeping peacefully, storybook illustration, "
                 "low saturation, gentle and cozy"
             ),
+            "mood": "sleepy",
         },
     ]
 
@@ -77,7 +81,7 @@ def _split_scenes(story: Story, world: StoryWorld) -> list[dict]:
         f"Story body:\n{story.body}\n\n"
         f"Story world: {setting}\n"
         f"{char_hint}\n"
-        "Split this story into 3-4 quiet picture-book scenes. "
+        "Split this story into 2-3 quiet picture-book scenes. "
         "Bias toward environment shots (moon, stars, forest, blanket, lantern). "
         "Keep character close-ups minimal to avoid consistency issues."
     )
@@ -91,9 +95,9 @@ def _split_scenes(story: Story, world: StoryWorld) -> list[dict]:
     )
 
     scenes = result.get("scenes", mock_scenes)
-    if not isinstance(scenes, list) or len(scenes) < 3:
+    if not isinstance(scenes, list) or len(scenes) < 2:
         scenes = mock_scenes
-    return scenes[:4]
+    return scenes[:3]  # 2-3 looping scenes is enough
 
 
 def _ensure_master_reference(world: StoryWorld) -> tuple[StoryWorld, str | None]:
@@ -152,7 +156,10 @@ def generate_scenes(story: Story, world: StoryWorld, animate: bool = True) -> St
     for idx, raw in enumerate(raw_scenes):
         text = raw.get("text", "")
         narration_text = text
-        safe_prompt = filter_image_prompt(raw.get("image_prompt", ""))
+        raw_prompt = raw.get("image_prompt", "")
+        # Resolve the scene mood: Claude's tag if valid, else keyword fallback.
+        mood = resolve_mood(raw.get("mood"), f"{text} {raw_prompt}")
+        safe_prompt = filter_image_prompt(raw_prompt)
         image_key = image_cache_key(
             story_title=story.title,
             character=character,
@@ -199,6 +206,7 @@ def generate_scenes(story: Story, world: StoryWorld, animate: bool = True) -> St
                 index=idx,
                 text=text,
                 narration_text=narration_text,
+                mood=mood,
                 image_prompt=safe_prompt,
                 image_url=image_url or None,
                 clip_url=clip_url,

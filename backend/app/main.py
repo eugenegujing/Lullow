@@ -22,9 +22,8 @@ logger = logging.getLogger("lullow")
 async def _lifespan(app: FastAPI):
     """Seed demo data on startup if no children exist yet."""
     try:
-        from .services.memory import seed_demo
         from .services.auth import seed_demo_user
-        seed_demo()
+        # No demo child seeding (no Leo / Nino / Moonberry) — profiles are user-created.
         seed_demo_user()
     except Exception as exc:  # pragma: no cover
         logger.warning("Demo seed failed (non-fatal): %s", exc)
@@ -72,6 +71,7 @@ _ROUTERS = [
     "profile",
     "settings",
     "journal",
+    "lamp",
     "rag",
     "admin",
 ]

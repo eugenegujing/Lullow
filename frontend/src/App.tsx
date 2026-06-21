@@ -5,6 +5,7 @@ import ProfileForm from './pages/ProfileForm'
 import ChildMode from './pages/ChildMode'
 import ParentDashboard from './pages/ParentDashboard'
 import StatusBadge from './components/StatusBadge'
+import BgmToggle from './components/BgmToggle'
 import ErrorBoundary from './components/ErrorBoundary'
 import type { ReactNode } from 'react'
 
@@ -26,6 +27,8 @@ export default function App() {
         <BrowserRouter>
           {/* Unobtrusive live/mock status badge — visible for judges */}
           <StatusBadge />
+          {/* Mute/unmute the looping lullaby music */}
+          <BgmToggle />
           <Routes>
             <Route path="/" element={<ProfilePicker />} />
             <Route path="/create" element={<ProfileForm />} />

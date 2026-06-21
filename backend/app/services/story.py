@@ -71,11 +71,16 @@ def _generate_body(
 
     extra_avoid: additional topics/terms to forbid (used on safety-retry).
     """
-    char_name = plan.main_character or "a gentle little fox"
-    setting = plan.setting or world.recurring_setting or "Moonberry Forest"
+    char_name = plan.main_character or (
+        f"a gentle little {profile.favorite_animals[0]}"
+        if profile.favorite_animals else "a gentle little friend"
+    )
+    setting = plan.setting or world.recurring_setting or (
+        profile.favorite_settings[0] if profile.favorite_settings else "a soft, cozy place"
+    )
     child_name = profile.name
 
-    mock_title = f"{char_name.split()[0]} and the {plan.theme.title()}"
+    mock_title = f"{char_name.split()[-1].title()} and the {plan.theme.title()}"
     mock_body = (
         f"Once upon a quiet night, in the heart of {setting}, "
         f"{char_name} was getting ready for sleep.\n\n"

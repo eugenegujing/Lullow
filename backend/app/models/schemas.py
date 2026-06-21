@@ -96,8 +96,8 @@ class RecurringCharacter(BaseModel):
 
 class StoryWorld(BaseModel):
     child_id: str
-    story_world_id: str = "moonberry_forest"
-    recurring_setting: str = "Moonberry Forest"
+    story_world_id: str = "default"
+    recurring_setting: str = ""  # no demo default; child's own setting / LLM fills this
     recurring_characters: list[RecurringCharacter] = Field(default_factory=list)
     past_themes: list[str] = Field(default_factory=list)
     successful_rituals: list[str] = Field(default_factory=list)
@@ -201,6 +201,7 @@ class StoryScene(BaseModel):
     index: int
     text: str               # narration text for this page
     narration_text: Optional[str] = None  # explicit slide narration; defaults to text
+    mood: str = "calm"      # scene atmosphere -> drives the physical lamp color
     image_prompt: str       # safety-filtered prompt for the image model
     image_url: Optional[str] = None
     clip_url: Optional[str] = None       # Pika low-motion animation

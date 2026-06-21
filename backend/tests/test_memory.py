@@ -92,7 +92,7 @@ def test_settings_save_and_load():
 def test_world_default_when_absent():
     world = mem.get_world("unknown_child")
     assert world.child_id == "unknown_child"
-    assert world.story_world_id == "moonberry_forest"
+    assert world.story_world_id == "default"
 
 
 def test_world_save_and_load():

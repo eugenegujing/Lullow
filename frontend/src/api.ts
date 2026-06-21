@@ -155,6 +155,7 @@ export interface StoryPlan {
 export interface StoryScene {
   index: number
   text: string
+  mood?: string
   image_prompt: string
   image_url?: string | null
   clip_url?: string | null
@@ -291,12 +292,53 @@ export interface StatusResponse {
 // HTTP helpers
 // ------------------------------------------------------------------ //
 
+// Transparent auth: the backend gates endpoints behind a parent login. The app
+// has no login UI (single-family demo), so we silently sign in with the seeded
+// demo-parent account, cache the token, and attach it to every request.
+const AUTH_USER = import.meta.env.VITE_AUTH_USER ?? 'demo_parent'
+const AUTH_PASS = import.meta.env.VITE_AUTH_PASS ?? 'lullow-demo'
+let authToken: string | null = null
+let loginPromise: Promise<string | null> | null = null
+
+async function login(): Promise<string | null> {
+  try {
+    const res = await fetch(`${BASE}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: AUTH_USER, password: AUTH_PASS }),
+    })
+    if (!res.ok) return null
+    authToken = (await res.json())?.access_token ?? null
+    return authToken
+  } catch {
+    return null
+  }
+}
+
+async function ensureToken(): Promise<string | null> {
+  if (authToken) return authToken
+  if (!loginPromise) loginPromise = login().finally(() => { loginPromise = null })
+  return loginPromise
+}
+
+function authHeader(): Record<string, string> {
+  return authToken ? { Authorization: `Bearer ${authToken}` } : {}
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const url = `${BASE}${path}`
-  const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
-    ...init,
-  })
+  await ensureToken()
+  const run = () =>
+    fetch(url, {
+      headers: { 'Content-Type': 'application/json', ...authHeader(), ...init?.headers },
+      ...init,
+    })
+  let res = await run()
+  if (res.status === 401) {
+    authToken = null
+    await ensureToken()
+    res = await run()
+  }
   if (!res.ok) {
     const body = await res.text().catch(() => '')
     throw new Error(`${res.status} ${res.statusText}: ${body}`)
@@ -306,7 +348,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 async function requestForm<T>(path: string, form: FormData): Promise<T> {
   const url = `${BASE}${path}`
-  const res = await fetch(url, { method: 'POST', body: form })
+  await ensureToken()
+  const run = () => fetch(url, { method: 'POST', body: form, headers: { ...authHeader() } })
+  let res = await run()
+  if (res.status === 401) {
+    authToken = null
+    await ensureToken()
+    res = await run()
+  }
   if (!res.ok) {
     const body = await res.text().catch(() => '')
     throw new Error(`${res.status} ${res.statusText}: ${body}`)
@@ -327,6 +376,19 @@ const put = <T>(path: string, body: unknown) =>
 // System
 export const getStatus  = () => get<StatusResponse>('/api/status')
 export const getHealth  = () => get<{ status: string; app: string }>('/api/health')
+
+// Physical mood lamp — fire-and-forget; must NEVER block or break playback.
+// The lamp endpoints are unauthenticated (like /health), so these skip auth.
+export function setLampMood(mood: string): void {
+  void fetch(`${BASE}/api/lamp/mood`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mood }),
+  }).catch(() => {})
+}
+export function lampOff(): void {
+  void fetch(`${BASE}/api/lamp/off`, { method: 'POST' }).catch(() => {})
+}
 
 // Profile
 export const getProfiles       = () => get<ChildProfile[]>('/api/profile')

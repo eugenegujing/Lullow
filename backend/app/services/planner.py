@@ -39,7 +39,9 @@ def build_plan(
         char = world.recurring_characters[0]
         main_char = f"{char.name} the {char.species}"
 
-    setting = world.recurring_setting or "Moonberry Forest"
+    setting = world.recurring_setting or (
+        profile.favorite_settings[0] if profile.favorite_settings else ""
+    )
 
     # Merge avoid lists: extraction + blocked topics + sensitive topics
     avoid = list(set(

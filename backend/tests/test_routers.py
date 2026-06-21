@@ -474,10 +474,17 @@ def test_tts_whitespace_only_returns_400(seeded_client):
     assert r.status_code == 400
 
 
-def test_tts_over_4000_chars_returns_400(seeded_client):
-    """Text longer than 4000 chars must be rejected with HTTP 400."""
-    long_text = "a" * 4001
+def test_tts_long_story_accepted(seeded_client):
+    """Long narration is accepted (chunked into one continuous clip), not rejected."""
+    long_text = "The moon is soft and the night is calm. " * 200  # ~8000 chars
     r = seeded_client.post("/api/voice/tts", json={"text": long_text})
+    assert r.status_code == 200
+    assert r.json()["audio_base64"]
+
+
+def test_tts_absurdly_long_text_returns_400(seeded_client):
+    """An unreasonable amount of text is still rejected with HTTP 400."""
+    r = seeded_client.post("/api/voice/tts", json={"text": "a" * 50001})
     assert r.status_code == 400
 
 

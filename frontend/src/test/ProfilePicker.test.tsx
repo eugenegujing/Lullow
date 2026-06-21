@@ -1,6 +1,7 @@
 /**
- * Tests for ProfilePicker page.
- * Verifies: profile cards render, "Create new" affordance, empty roster → redirect.
+ * Tests for ProfilePicker page (moonlit dreamscape redesign).
+ * Verifies: profile cards render, "New profile" affordance, the redesigned
+ * landing stays visible on an empty roster, and per-card edit/remove buttons.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
@@ -22,7 +23,7 @@ const lsMock = {
 Object.defineProperty(globalThis, 'localStorage', { value: lsMock, writable: true })
 
 // ------------------------------------------------------------------ //
-// fetch mock (for tryDemo path; not called in most tests)
+// fetch mock (auth/login path; not asserted here)
 // ------------------------------------------------------------------ //
 const fetchMock = vi.fn()
 Object.defineProperty(globalThis, 'fetch', { value: fetchMock, writable: true })
@@ -89,39 +90,22 @@ describe('ProfilePicker', () => {
     })
   })
 
-  it('redirects to /create when the roster is empty (first run)', async () => {
-    // Empty roster
+  it('keeps the redesigned picker visible when the roster is empty', async () => {
     renderPicker()
 
     await waitFor(() => {
-      expect(screen.getByTestId('create-page')).toBeInTheDocument()
+      expect(screen.getByText(/who is winding down tonight/i)).toBeInTheDocument()
+      expect(screen.getByText(/new profile/i)).toBeInTheDocument()
     })
   })
 
-  it('shows a "Try the demo" button when the demo child is not in the roster', async () => {
-    const entries = [
-      { profile: makeProfile('child_aa000001', 'Alice'), avatar: '🐰' },
-    ]
-    store['lullow.profiles'] = JSON.stringify(entries)
-
+  it('does not show a demo shortcut (demo data was removed)', async () => {
     renderPicker()
 
     await waitFor(() => {
-      expect(screen.getByText(/try the demo/i)).toBeInTheDocument()
+      expect(screen.getByText(/who is winding down tonight/i)).toBeInTheDocument()
     })
-  })
-
-  it('does NOT show "Try the demo" when demo child (child_001) is already in the roster', async () => {
-    const entries = [
-      { profile: makeProfile('child_001', 'Leo'), avatar: '🦊' },
-    ]
-    store['lullow.profiles'] = JSON.stringify(entries)
-
-    renderPicker()
-
-    await waitFor(() => {
-      expect(screen.queryByText(/try the demo/i)).not.toBeInTheDocument()
-    })
+    expect(screen.queryByText(/try the demo/i)).not.toBeInTheDocument()
   })
 
   it('shows an edit button on each profile card (hover affordance visible in DOM)', async () => {

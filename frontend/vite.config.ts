@@ -9,6 +9,9 @@ export default defineConfig({
       '/api': {
         target: process.env.VITE_API_BASE ?? 'http://localhost:8000',
         changeOrigin: true,
+        // Aura-2 TTS can take a while; don't cut off slow narration requests.
+        timeout: 300000,
+        proxyTimeout: 300000,
       },
     },
   },

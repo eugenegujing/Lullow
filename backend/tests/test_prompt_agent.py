@@ -43,21 +43,26 @@ def test_fetchai_json_falls_back_to_mock_when_not_live():
     assert used_mock is True
 
 
-def test_prompt_agent_is_fetchai_only():
+def test_prompt_agent_reflects_configured_provider(monkeypatch):
+    """The facade is switchable between Anthropic (Claude) and Fetch.ai."""
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "prompt_provider", "anthropic")
+    assert prompt_agent.provider_name == "anthropic"
+    monkeypatch.setattr(settings, "prompt_provider", "fetchai")
     assert prompt_agent.provider_name == "fetchai"
 
 
-def test_prompt_agent_fetchai_falls_back_when_unconfigured(monkeypatch):
-    from app.services import prompt_agent as prompt_module
+def test_prompt_agent_falls_back_to_mock_when_unconfigured(monkeypatch):
+    """With the active provider offline (conftest), the caller's mock is returned."""
+    from app.config import settings
 
-    monkeypatch.setattr(prompt_module.fetchai_client, "live", False)
-
-    result, used_mock = prompt_agent.generate_json(
-        "system",
-        "user",
-        mock={"fallback": True},
-    )
-
-    assert prompt_agent.provider_name == "fetchai"
+    monkeypatch.setattr(settings, "prompt_provider", "anthropic")
+    result, used_mock = prompt_agent.generate_json("system", "user", mock={"fallback": True})
     assert result == {"fallback": True}
+    assert used_mock is True
+
+    monkeypatch.setattr(settings, "prompt_provider", "fetchai")
+    result, used_mock = prompt_agent.generate_json("system", "user", mock={"fb2": True})
+    assert result == {"fb2": True}
     assert used_mock is True

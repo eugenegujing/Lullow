@@ -168,10 +168,13 @@ describe('selectProfile', () => {
     }
     store['lullow.profiles'] = JSON.stringify([entry])
 
-    // GET → 404, then PUT calls succeed
-    fetchMock
-      .mockImplementationOnce(() => notFound())   // GET /api/profile/child_dd000004
-      .mockImplementation(() => okJson(profile))  // PUT /api/profile + PUT /api/profile/.../world
+    // Route by URL/method so the silent auth-login call doesn't disturb call
+    // ordering: login → token, GET profile → 404 (forces re-PUT), PUTs → ok.
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      if (url.endsWith('/api/auth/login')) return okJson({ access_token: 'test-token' })
+      if (init?.method === 'PUT') return okJson(profile)
+      return notFound()  // GET /api/profile/child_dd000004
+    })
 
     let captured: ReturnType<typeof useProfiles> | null = null
     render(

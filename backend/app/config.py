@@ -33,7 +33,7 @@ class Settings(BaseSettings):
 
     # Prompt generation. Fetch.ai ASI One is exposed through an OpenAI-style
     # chat completions endpoint.
-    prompt_provider: str = "fetchai"
+    prompt_provider: str = "anthropic"  # "anthropic" (Claude) or "fetchai" (ASI One) — both supported
     fetchai_api_key: str = ""
     asi_one_api_key: str = ""
     fetchai_base_url: str = "https://api.asi1.ai/v1/chat/completions"
@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     # Deepgram
     deepgram_api_key: str = ""
     deepgram_stt_model: str = "nova-3"
-    deepgram_tts_model: str = "aura-2-luna-en"
+    deepgram_tts_model: str = "aura-2-cora-en"
 
     # Redis
     redis_url: str = ""
@@ -81,6 +81,11 @@ class Settings(BaseSettings):
     terac_api_key: str = ""
     terac_base_url: str = "https://api.terac.ai"
 
+    # Govee (physical Lullow mood lamp — optional)
+    govee_api_key: str = ""
+    govee_device: str = ""
+    govee_sku: str = ""
+
     # RAG tuning
     rag_vector_weight: float = 0.5
     rag_metadata_weight: float = 0.5
@@ -102,7 +107,7 @@ class Settings(BaseSettings):
     def feature_status(self) -> dict[str, bool]:
         """True = live integration, False = running on mock fallback."""
         return {
-            "anthropic": False,
+            "anthropic": bool(self.anthropic_api_key),
             "fetchai": bool(self.fetchai_resolved_api_key and self.fetchai_base_url),
             "deepgram": bool(self.deepgram_api_key),
             "redis": bool(self.redis_url),
@@ -112,6 +117,7 @@ class Settings(BaseSettings):
             "midjourney": bool(self.midjourney_api_key and self.midjourney_base_url),
             "arize": bool(self.arize_api_key and self.arize_space_id),
             "terac": bool(self.terac_api_key),
+            "govee": bool(self.govee_api_key and self.govee_device and self.govee_sku),
         }
 
 
