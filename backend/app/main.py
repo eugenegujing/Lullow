@@ -23,7 +23,9 @@ async def _lifespan(app: FastAPI):
     """Seed demo data on startup if no children exist yet."""
     try:
         from .services.memory import seed_demo
+        from .services.auth import seed_demo_user
         seed_demo()
+        seed_demo_user()
     except Exception as exc:  # pragma: no cover
         logger.warning("Demo seed failed (non-fatal): %s", exc)
     yield
@@ -41,7 +43,7 @@ app.add_middleware(
     allow_origins=settings.cors_origin_list,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "OPTIONS"],
-    allow_headers=["Content-Type"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 
@@ -62,6 +64,7 @@ def status() -> dict:
 # Include feature routers defensively so the app runs even while some are still
 # being implemented by the backend dev.
 _ROUTERS = [
+    "auth",
     "session",
     "story",
     "voice",
@@ -69,6 +72,8 @@ _ROUTERS = [
     "profile",
     "settings",
     "journal",
+    "rag",
+    "admin",
 ]
 
 for name in _ROUTERS:

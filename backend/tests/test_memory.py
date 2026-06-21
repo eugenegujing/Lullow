@@ -34,6 +34,16 @@ def test_profile_save_and_load():
     assert saved.child_id == "test_child"
 
 
+def test_profile_and_app_redis_stores_are_split():
+    from app.integrations.redis_app_client import app_redis_client
+    from app.integrations.redis_profile_client import profile_redis_client
+
+    mem.save_profile(ChildProfile(child_id="split_child", name="Split", age=5))
+
+    assert profile_redis_client.get_json("profile:split_child") is not None
+    assert app_redis_client.get_json("profile:split_child") is None
+
+
 def test_profile_not_found_returns_none():
     result = mem.get_profile("nonexistent_child")
     assert result is None
@@ -148,6 +158,16 @@ def test_story_save_and_load():
     assert loaded is not None
     assert loaded.title == "Test Story"
     assert loaded.body == "Once upon a time..."
+
+
+def test_story_title_index_is_unique_to_first_story():
+    first = _make_story("story_first", "child_001", "2026-06-20T10:00:00+00:00")
+    second = _make_story("story_second", "child_001", "2026-06-20T10:01:00+00:00")
+    mem.save_story(first)
+    mem.save_story(second)
+
+    assert mem.get_story_id_by_title("Test Story") == "story_first"
+    assert mem.get_story_by_title("Test Story").story_id == "story_first"
 
 
 def test_story_not_found_returns_none():

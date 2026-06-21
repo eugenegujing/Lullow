@@ -10,13 +10,13 @@ from __future__ import annotations
 import logging
 import re
 
-from ..integrations.anthropic_client import anthropic_client
 from ..models.schemas import (
     ParentSafetySettings,
     SafetyEscalation,
     SafetyEvaluation,
 )
 from ..prompts.prompts import ESCALATION_SYSTEM, SAFETY_EVAL_SYSTEM
+from .prompt_agent import prompt_agent
 
 logger = logging.getLogger("lullow.safety")
 
@@ -154,7 +154,7 @@ def detect_escalation(text: str) -> SafetyEscalation:
         return SafetyEscalation(triggered=False)
 
     # Ask Claude to write a warm response, but always have a safe fallback.
-    result, _ = anthropic_client.generate_json(
+    result, _ = prompt_agent.generate_json(
         ESCALATION_SYSTEM,
         f"Child input: {text}\nCategory detected: {matched_category}",
         mock={
@@ -248,7 +248,7 @@ def evaluate_story(story_body: str, settings: ParentSafetySettings) -> SafetyEva
         f"Parent's blocked words: {', '.join(settings.blocked_words) or 'none'}"
     )
 
-    result, _ = anthropic_client.generate_json(
+    result, _ = prompt_agent.generate_json(
         SAFETY_EVAL_SYSTEM,
         user_msg,
         mock=mock_dict,

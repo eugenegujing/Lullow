@@ -9,15 +9,16 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from ..dependencies import require_auth
 from ..models.schemas import CheckInRequest, CheckInResponse, SafetyEscalation
 from ..services.emotion import extract_emotion
 from ..services.safety import detect_escalation
 
 logger = logging.getLogger("lullow.routers.session")
 
-router = APIRouter(prefix="/api/session", tags=["session"])
+router = APIRouter(prefix="/api/session", tags=["session"], dependencies=[Depends(require_auth)])
 
 
 @router.post("/checkin", response_model=CheckInResponse)

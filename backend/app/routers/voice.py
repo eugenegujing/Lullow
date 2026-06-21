@@ -10,15 +10,16 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from pydantic import BaseModel
 
-from ..integrations.deepgram_client import deepgram_client
+from ..dependencies import require_auth
+from ..integrations.voice_client import voice_client
 from ..models.schemas import TranscriptResult, TTSResult
 
 logger = logging.getLogger("lullow.routers.voice")
 
-router = APIRouter(prefix="/api/voice", tags=["voice"])
+router = APIRouter(prefix="/api/voice", tags=["voice"], dependencies=[Depends(require_auth)])
 
 _TTS_MAX_CHARS = 4000
 
@@ -37,7 +38,7 @@ async def speech_to_text(file: UploadFile) -> TranscriptResult:
     try:
         audio = await file.read()
         mimetype = file.content_type or "audio/webm"
-        return deepgram_client.transcribe(audio, mimetype)
+        return voice_client.transcribe(audio, mimetype)
     except Exception as exc:
         logger.warning("STT error: %s", exc)
         raise HTTPException(status_code=500, detail=f"STT failed: {exc}")
@@ -60,7 +61,7 @@ def text_to_speech(req: TTSRequest) -> TTSResult:
             detail=f"text must not exceed {_TTS_MAX_CHARS} characters",
         )
     try:
-        return deepgram_client.synthesize(req.text)
+        return voice_client.synthesize(req.text)
     except Exception as exc:
         logger.warning("TTS error: %s", exc)
         raise HTTPException(status_code=500, detail=f"TTS failed: {exc}")

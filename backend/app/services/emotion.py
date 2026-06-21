@@ -8,9 +8,9 @@ from __future__ import annotations
 
 import logging
 
-from ..integrations.anthropic_client import anthropic_client
 from ..models.schemas import Emotion, EmotionExtraction, SpeakerType
 from ..prompts.prompts import EMOTION_EXTRACTION_SYSTEM
+from .prompt_agent import prompt_agent
 
 logger = logging.getLogger("lullow.emotion")
 
@@ -150,7 +150,7 @@ def extract_emotion(text: str, speaker: SpeakerType) -> EmotionExtraction:
         "confidence": mock.confidence,
     }
 
-    result, _ = anthropic_client.generate_json(
+    result, _ = prompt_agent.generate_json(
         EMOTION_EXTRACTION_SYSTEM,
         user_msg,
         mock=mock_dict,

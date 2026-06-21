@@ -10,14 +10,15 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from ..dependencies import require_auth
 from ..models.schemas import ChildProfile, StoryWorld
 from ..services import memory as memory_service
 
 logger = logging.getLogger("lullow.routers.profile")
 
-router = APIRouter(prefix="/api/profile", tags=["profile"])
+router = APIRouter(prefix="/api/profile", tags=["profile"], dependencies=[Depends(require_auth)])
 
 
 @router.get("", response_model=list[ChildProfile])

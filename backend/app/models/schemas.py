@@ -38,6 +38,27 @@ class VisualMode(str, Enum):
 
 
 # --------------------------------------------------------------------------- #
+# Auth
+# --------------------------------------------------------------------------- #
+class AuthLoginRequest(BaseModel):
+    username: str = Field(min_length=1)
+    password: str = Field(min_length=1)
+
+
+class AuthLoginResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    username: str
+    child_id: str
+    expires_in: int
+
+
+class AuthMeResponse(BaseModel):
+    username: str
+    child_id: str
+
+
+# --------------------------------------------------------------------------- #
 # Memory: Child profile, parent safety settings, story world
 # --------------------------------------------------------------------------- #
 class ChildProfile(BaseModel):
@@ -154,6 +175,17 @@ class StoryRequest(BaseModel):
     extraction: Optional["EmotionExtraction"] = None  # checkin passes its result to skip re-extraction
 
 
+class ComfortStrategy(BaseModel):
+    emotion: Emotion
+    comfort_goal: str
+    story_strategy: str
+    tone: str = "warm, slow, low-stimulation"
+    use: list[str] = Field(default_factory=list)
+    avoid: list[str] = Field(default_factory=list)
+    ritual: str = "three slow breaths"
+    rationale: str = ""
+
+
 class StoryPlan(BaseModel):
     theme: str
     tone: str = "gentle"
@@ -168,12 +200,15 @@ class StoryPlan(BaseModel):
 class StoryScene(BaseModel):
     index: int
     text: str               # narration text for this page
+    narration_text: Optional[str] = None  # explicit slide narration; defaults to text
     image_prompt: str       # safety-filtered prompt for the image model
     image_url: Optional[str] = None
     clip_url: Optional[str] = None       # Pika low-motion animation
     narration_audio_base64: Optional[str] = None
     is_image_mock: bool = False
     is_clip_mock: bool = False
+    image_cache_key: Optional[str] = None
+    text_hash: Optional[str] = None
 
 
 class Ritual(BaseModel):
@@ -214,6 +249,46 @@ class StoryGenerateResponse(BaseModel):
     story: Optional[Story] = None   # null when a danger input blocks generation
     escalation: Optional["SafetyEscalation"] = None
     used_mock: dict[str, bool] = Field(default_factory=dict)
+
+
+class StoryRagRecord(BaseModel):
+    story_id: str
+    title: str
+    child_id: str
+    age_band: str
+    emotion: Emotion
+    comfort_goal: str
+    story_strategy: str
+    character: Optional[str] = None
+    setting: Optional[str] = None
+    safety_tags: list[str] = Field(default_factory=list)
+    liked: bool = False
+    approved: bool = False
+    rejected: bool = False
+    text_hash: str
+
+
+class StorySearchRequest(BaseModel):
+    child_id: str
+    emotion: Emotion
+    comfort_goal: str
+    story_strategy: str = ""
+    character: Optional[str] = None
+    setting: Optional[str] = None
+
+
+class StorySearchResponse(BaseModel):
+    matched: bool
+    story_id: Optional[str] = None
+    score: float = 0.0
+    reason: str = ""
+    record: Optional[StoryRagRecord] = None
+
+
+class StoryFeedbackRequest(BaseModel):
+    liked: bool
+    rejected: bool = False
+    notes: str = ""
 
 
 class StoryReviseRequest(BaseModel):

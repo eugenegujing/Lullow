@@ -9,10 +9,10 @@ from __future__ import annotations
 import logging
 from collections import Counter
 
-from ..integrations.anthropic_client import anthropic_client
 from ..models.schemas import Emotion, GrowthJournal, JournalEntry
 from ..prompts.prompts import JOURNAL_REFLECTION_SYSTEM
 from . import memory as memory_service
+from .prompt_agent import prompt_agent
 
 
 def _infer_emotion(theme: str) -> Emotion:
@@ -123,7 +123,7 @@ def build_journal(child_id: str) -> GrowthJournal:
             "Write a short, warm, parent-facing reflection. 2-4 sentences. "
             "Do NOT diagnose or label. Just gently note patterns and what seemed to help."
         )
-        reflection, _ = anthropic_client.generate_text(
+        reflection, _ = prompt_agent.generate_text(
             JOURNAL_REFLECTION_SYSTEM,
             user_msg,
             mock=mock_reflection,

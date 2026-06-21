@@ -32,6 +32,66 @@ def test_status(seeded_client):
 
 
 # --------------------------------------------------------------------------- #
+# Auth
+# --------------------------------------------------------------------------- #
+
+def test_auth_login_success(seeded_client):
+    r = seeded_client.post("/api/auth/login", json={
+        "username": "demo_parent",
+        "password": "lullow-demo",
+    })
+    assert r.status_code == 200
+    data = r.json()
+    assert data["access_token"]
+    assert data["token_type"] == "bearer"
+    assert data["username"] == "demo_parent"
+    assert data["child_id"] == "child_001"
+    assert data["expires_in"] > 0
+
+
+def test_auth_login_wrong_password(seeded_client):
+    r = seeded_client.post("/api/auth/login", json={
+        "username": "demo_parent",
+        "password": "wrong-password",
+    })
+    assert r.status_code == 401
+    assert "Wrong username or password" in r.text
+
+
+def test_auth_me_and_logout(seeded_client):
+    login_r = seeded_client.post("/api/auth/login", json={
+        "username": "demo_parent",
+        "password": "lullow-demo",
+    })
+    token = login_r.json()["access_token"]
+
+    me_r = seeded_client.get(
+        "/api/auth/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert me_r.status_code == 200
+    assert me_r.json()["child_id"] == "child_001"
+
+    logout_r = seeded_client.post(
+        "/api/auth/logout",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert logout_r.status_code == 200
+
+    me_after_logout = seeded_client.get(
+        "/api/auth/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert me_after_logout.status_code == 401
+
+
+def test_protected_route_requires_auth(seeded_client):
+    r = seeded_client.get("/api/profile/child_001", headers={"Authorization": ""})
+    assert r.status_code == 401
+    assert "Not authenticated" in r.text
+
+
+# --------------------------------------------------------------------------- #
 # Profile
 # --------------------------------------------------------------------------- #
 
@@ -348,6 +408,47 @@ def test_story_approve_updates_world_memory(seeded_client):
     world = world_r.json()
     # The theme should now be in past_themes
     assert theme in world["past_themes"]
+
+
+def test_story_feedback_liked_enables_rag_search(seeded_client):
+    gen_data = _generate_story(seeded_client)
+    story = gen_data["story"]
+
+    feedback_r = seeded_client.post(
+        f"/api/story/{story['story_id']}/feedback",
+        json={"liked": True},
+    )
+    assert feedback_r.status_code == 200
+    assert feedback_r.json()["liked"] is True
+
+    search_r = seeded_client.post("/api/rag/story/search", json={
+        "child_id": story["child_id"],
+        "emotion": story["emotion"],
+        "comfort_goal": story["plan"]["theme"],
+        "story_strategy": story["plan"]["resolution"],
+        "character": story["plan"]["main_character"],
+        "setting": story["plan"]["setting"],
+    })
+    assert search_r.status_code == 200
+    data = search_r.json()
+    assert data["matched"] is True
+    assert data["story_id"] == story["story_id"]
+
+
+def test_rag_search_ignores_unliked_draft_story(seeded_client):
+    gen_data = _generate_story(seeded_client)
+    story = gen_data["story"]
+
+    search_r = seeded_client.post("/api/rag/story/search", json={
+        "child_id": story["child_id"],
+        "emotion": story["emotion"],
+        "comfort_goal": story["plan"]["theme"],
+        "story_strategy": story["plan"]["resolution"],
+        "character": story["plan"]["main_character"],
+        "setting": story["plan"]["setting"],
+    })
+    assert search_r.status_code == 200
+    assert search_r.json()["matched"] is False
 
 
 # --------------------------------------------------------------------------- #

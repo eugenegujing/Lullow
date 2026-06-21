@@ -13,8 +13,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.integrations.anthropic_client import anthropic_client
-from app.integrations.redis_client import RedisClient, _MemoryStore
-from app.integrations.deepgram_client import deepgram_client
+from app.integrations.redis_client import _MemoryStore
+from app.integrations.voice_client import voice_client
+from app.integrations.fetchai_client import fetchai_client
 from app.integrations.image_client import image_client
 from app.integrations.pika_client import pika_client
 
@@ -24,8 +25,9 @@ def force_mock_mode(monkeypatch):
     """Force all integrations into mock/offline mode for determinism."""
     monkeypatch.setattr(anthropic_client, "live", False)
     monkeypatch.setattr(anthropic_client, "_client", None)
-    monkeypatch.setattr(deepgram_client, "live", False)
-    monkeypatch.setattr(deepgram_client, "_client", None)
+    monkeypatch.setattr(voice_client._impl, "live", False)
+    monkeypatch.setattr(voice_client._impl, "_client", None)
+    monkeypatch.setattr(fetchai_client, "live", False)
     monkeypatch.setattr(image_client, "live", False)
     monkeypatch.setattr(pika_client, "live", False)
 
@@ -36,11 +38,18 @@ def fresh_memory_store(monkeypatch):
 
     This isolates each test — nothing bleeds between test functions.
     """
-    from app.integrations import redis_client as rc_module
+    from app.integrations import redis_app_client as app_rc_module
+    from app.integrations import redis_client as legacy_rc_module
+    from app.integrations import redis_profile_client as profile_rc_module
 
-    fresh = _MemoryStore()
-    monkeypatch.setattr(rc_module.redis_client, "_store", fresh)
-    monkeypatch.setattr(rc_module.redis_client, "live", False)
+    app_fresh = _MemoryStore()
+    profile_fresh = _MemoryStore()
+    monkeypatch.setattr(app_rc_module.app_redis_client, "_store", app_fresh)
+    monkeypatch.setattr(app_rc_module.app_redis_client, "live", False)
+    monkeypatch.setattr(profile_rc_module.profile_redis_client, "_store", profile_fresh)
+    monkeypatch.setattr(profile_rc_module.profile_redis_client, "live", False)
+    monkeypatch.setattr(legacy_rc_module.redis_client, "_store", app_fresh)
+    monkeypatch.setattr(legacy_rc_module.redis_client, "live", False)
 
 
 @pytest.fixture
@@ -60,7 +69,15 @@ def seeded_client(fresh_memory_store):
     """TestClient with demo data (Leo / Nino / Moonberry Forest) already seeded."""
     from app.main import app
     from app.services.memory import seed_demo
+    from app.services.auth import seed_demo_user
 
     seed_demo()
+    seed_demo_user()
     with TestClient(app) as c:
+        login = c.post("/api/auth/login", json={
+            "username": "demo_parent",
+            "password": "lullow-demo",
+        })
+        assert login.status_code == 200, login.text
+        c.headers.update({"Authorization": f"Bearer {login.json()['access_token']}"})
         yield c

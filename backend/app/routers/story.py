@@ -13,11 +13,13 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from ..dependencies import require_auth
 from ..integrations.terac_client import terac_client
 from ..models.schemas import (
     AnnotationRequest,
+    StoryFeedbackRequest,
     Story,
     StoryGenerateResponse,
     StoryRequest,
@@ -25,10 +27,15 @@ from ..models.schemas import (
 )
 from ..services import memory as memory_service
 from ..services.story import generate_story, revise_story
+from ..services.story_retrieval import (
+    apply_feedback,
+    get_rag_record,
+    index_story_from_existing,
+)
 
 logger = logging.getLogger("lullow.routers.story")
 
-router = APIRouter(prefix="/api/story", tags=["story"])
+router = APIRouter(prefix="/api/story", tags=["story"], dependencies=[Depends(require_auth)])
 
 
 @router.post("/generate", response_model=StoryGenerateResponse)
@@ -109,7 +116,30 @@ def story_approve(story_id: str) -> Story:
     memory_service.save_world(world)
 
     memory_service.save_story(approved)
+    profile = memory_service.get_profile(story.child_id)
+    if profile is not None:
+        world = memory_service.get_world(story.child_id)
+        index_story_from_existing(approved, profile, world, approved=True)
     return approved
+
+
+@router.post("/{story_id}/feedback")
+def story_feedback(story_id: str, req: StoryFeedbackRequest) -> dict:
+    """Store parent/child feedback for future story retrieval."""
+    story = memory_service.get_story(story_id)
+    if story is None:
+        raise HTTPException(status_code=404, detail=f"Story {story_id} not found")
+
+    record = get_rag_record(story_id)
+    if record is None:
+        profile = memory_service.get_profile(story.child_id)
+        if profile is None:
+            raise HTTPException(status_code=404, detail=f"Profile {story.child_id} not found")
+        world = memory_service.get_world(story.child_id)
+        record = index_story_from_existing(story, profile, world)
+
+    updated = apply_feedback(req, record)
+    return updated.model_dump()
 
 
 @router.post("/{story_id}/annotate")

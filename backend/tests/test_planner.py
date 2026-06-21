@@ -61,6 +61,31 @@ def test_build_plan_conflict_is_none_or_low():
     assert plan.conflict_intensity in ("none", "low")
 
 
+@pytest.mark.parametrize(
+    "emotion",
+    [
+        Emotion.SCARED,
+        Emotion.LONELY,
+        Emotion.MISSING_PARENT,
+        Emotion.SAD,
+        Emotion.WORRIED,
+        Emotion.ANGRY,
+        Emotion.OVERSTIMULATED,
+        Emotion.CANT_SLEEP,
+        Emotion.UNSURE,
+    ],
+)
+def test_build_plan_uses_soothing_strategy_for_negative_emotions(emotion):
+    extraction = _make_extraction(emotion=emotion, target="settle toward sleep")
+    plan = build_plan(extraction, _make_profile(), _make_world(), _make_settings())
+
+    assert plan.conflict_intensity in ("none", "low")
+    assert "monsters" in plan.avoid
+    assert "violence" in plan.avoid
+    assert plan.ritual.strip() != ""
+    assert "sleep" in f"{plan.theme} {plan.resolution}".lower()
+
+
 def test_build_plan_includes_blocked_topics_in_avoid():
     extraction = _make_extraction()
     settings = _make_settings(blocked_topics=["death", "monsters", "violence"])

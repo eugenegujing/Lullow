@@ -7,14 +7,15 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from ..dependencies import require_auth
 from ..models.schemas import ParentSafetySettings
 from ..services import memory as memory_service
 
 logger = logging.getLogger("lullow.routers.settings")
 
-router = APIRouter(prefix="/api/settings", tags=["settings"])
+router = APIRouter(prefix="/api/settings", tags=["settings"], dependencies=[Depends(require_auth)])
 
 
 @router.get("/{child_id}", response_model=ParentSafetySettings)

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import logging
 
-from ..integrations.anthropic_client import anthropic_client
 from ..models.schemas import (
     EmotionExtraction,
     ChildProfile,
@@ -17,6 +16,8 @@ from ..models.schemas import (
     StoryWorld,
 )
 from ..prompts.prompts import STORY_PLAN_SYSTEM
+from .comfort_strategy import build_comfort_strategy
+from .prompt_agent import prompt_agent
 
 logger = logging.getLogger("lullow.planner")
 
@@ -46,18 +47,20 @@ def build_plan(
         + settings.blocked_topics
         + profile.sensitive_topics
     ))
+    strategy = build_comfort_strategy(extraction, profile, world, settings)
+    avoid = sorted(set(avoid + strategy.avoid))
 
     # Coherent mock that honours the child's emotion and world
     mock_plan = {
-        "theme": extraction.target_outcome,
-        "tone": "gentle and cozy",
-        "conflict_intensity": "low",
+        "theme": strategy.comfort_goal,
+        "tone": strategy.tone,
+        "conflict_intensity": "none",
         "avoid": avoid,
         "resolution": (
-            f"{profile.name} and {main_char or 'a gentle friend'} find a soft "
-            "way through the feeling and drift toward sleep."
+            f"{profile.name} and {main_char or 'a gentle friend'} move from the "
+            "big feeling into safety, softness, and sleep."
         ),
-        "ritual": "three moon breaths",
+        "ritual": strategy.ritual,
         "main_character": main_char,
         "setting": setting,
     }
@@ -79,7 +82,9 @@ def build_plan(
         f"Child: {profile.name}, age {profile.age}\n"
         f"Emotion detected: {extraction.emotion.value}\n"
         f"Trigger: {extraction.trigger or 'unknown'}\n"
-        f"Target outcome: {extraction.target_outcome}\n"
+        f"Comfort goal: {strategy.comfort_goal}\n"
+        f"Story strategy: {strategy.story_strategy}\n"
+        f"Use these safe personalization details: {', '.join(strategy.use) or 'none'}\n"
         f"Topics to avoid: {', '.join(avoid) or 'none'}\n"
         f"Favorite animals: {animals}\n"
         f"Comfort objects: {comfort}\n"
@@ -88,10 +93,11 @@ def build_plan(
         f"Past story themes: {past_themes}\n"
         f"Story length: ~{profile.preferred_story_length_minutes} minutes\n"
         f"Blocked topics: {', '.join(settings.blocked_topics) or 'none'}\n"
-        "Create a safe, calming bedtime story plan. Keep conflict none or low."
+        "Create a safe, calming bedtime story plan from the comfort strategy. "
+        "Do not mirror distress into the plot. Keep conflict none or low."
     )
 
-    result, _ = anthropic_client.generate_json(
+    result, _ = prompt_agent.generate_json(
         STORY_PLAN_SYSTEM,
         user_msg,
         mock=mock_plan,

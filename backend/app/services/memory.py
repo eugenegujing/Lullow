@@ -14,7 +14,8 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from ..integrations.redis_client import redis_client
+from ..integrations.redis_app_client import app_redis_client
+from ..integrations.redis_profile_client import profile_redis_client
 from ..models.schemas import (
     ChildProfile,
     ParentSafetySettings,
@@ -23,6 +24,7 @@ from ..models.schemas import (
     StoryWorld,
     VisualMode,
 )
+from .asset_cache import story_title_key
 
 logger = logging.getLogger("lullow.memory")
 
@@ -33,7 +35,7 @@ logger = logging.getLogger("lullow.memory")
 
 def get_profile(child_id: str) -> Optional[ChildProfile]:
     """Return the child's profile, or None if not found."""
-    data = redis_client.get_json(f"profile:{child_id}")
+    data = profile_redis_client.get_json(f"profile:{child_id}")
     if data is None:
         return None
     return ChildProfile(**data)
@@ -41,7 +43,7 @@ def get_profile(child_id: str) -> Optional[ChildProfile]:
 
 def list_profiles() -> list[ChildProfile]:
     """Return all stored child profiles."""
-    child_ids = redis_client.index_members("children")
+    child_ids = profile_redis_client.index_members("children")
     profiles = []
     for cid in child_ids:
         p = get_profile(cid)
@@ -52,8 +54,8 @@ def list_profiles() -> list[ChildProfile]:
 
 def save_profile(profile: ChildProfile) -> ChildProfile:
     """Upsert a child profile and register it in the children index."""
-    redis_client.set_json(f"profile:{profile.child_id}", profile.model_dump())
-    redis_client.add_to_index("children", profile.child_id)
+    profile_redis_client.set_json(f"profile:{profile.child_id}", profile.model_dump())
+    profile_redis_client.add_to_index("children", profile.child_id)
     return profile
 
 
@@ -63,7 +65,7 @@ def save_profile(profile: ChildProfile) -> ChildProfile:
 
 def get_settings(child_id: str) -> ParentSafetySettings:
     """Return parent settings, falling back to safe defaults if none stored."""
-    data = redis_client.get_json(f"settings:{child_id}")
+    data = profile_redis_client.get_json(f"settings:{child_id}")
     if data is None:
         return ParentSafetySettings(child_id=child_id)
     return ParentSafetySettings(**data)
@@ -71,7 +73,10 @@ def get_settings(child_id: str) -> ParentSafetySettings:
 
 def save_settings(settings_obj: ParentSafetySettings) -> ParentSafetySettings:
     """Persist parent safety settings."""
-    redis_client.set_json(f"settings:{settings_obj.child_id}", settings_obj.model_dump())
+    profile_redis_client.set_json(
+        f"settings:{settings_obj.child_id}",
+        settings_obj.model_dump(),
+    )
     return settings_obj
 
 
@@ -81,7 +86,7 @@ def save_settings(settings_obj: ParentSafetySettings) -> ParentSafetySettings:
 
 def get_world(child_id: str) -> StoryWorld:
     """Return the story world, falling back to Moonberry Forest defaults."""
-    data = redis_client.get_json(f"world:{child_id}")
+    data = app_redis_client.get_json(f"world:{child_id}")
     if data is None:
         return StoryWorld(child_id=child_id)
     return StoryWorld(**data)
@@ -89,7 +94,7 @@ def get_world(child_id: str) -> StoryWorld:
 
 def save_world(world: StoryWorld) -> StoryWorld:
     """Persist the story world."""
-    redis_client.set_json(f"world:{world.child_id}", world.model_dump())
+    app_redis_client.set_json(f"world:{world.child_id}", world.model_dump())
     return world
 
 
@@ -99,22 +104,38 @@ def save_world(world: StoryWorld) -> StoryWorld:
 
 def save_story(story: Story) -> Story:
     """Persist a story and register it in the child's story index."""
-    redis_client.set_json(f"story:{story.story_id}", story.model_dump())
-    redis_client.add_to_index(f"child:{story.child_id}:stories", story.story_id)
+    app_redis_client.set_json(f"story:{story.story_id}", story.model_dump())
+    app_redis_client.add_to_index(f"child:{story.child_id}:stories", story.story_id)
+    title_key = story_title_key(story.title)
+    existing_story_id = app_redis_client.get_json(title_key)
+    if existing_story_id in (None, story.story_id):
+        app_redis_client.set_json(title_key, story.story_id)
     return story
 
 
 def get_story(story_id: str) -> Optional[Story]:
     """Return a story by ID, or None if not found."""
-    data = redis_client.get_json(f"story:{story_id}")
+    data = app_redis_client.get_json(f"story:{story_id}")
     if data is None:
         return None
     return Story(**data)
 
 
+def get_story_id_by_title(title: str) -> Optional[str]:
+    """Return the story_id registered for a unique story title."""
+    data = app_redis_client.get_json(story_title_key(title))
+    return data if isinstance(data, str) else None
+
+
+def get_story_by_title(title: str) -> Optional[Story]:
+    """Return a story by its unique title index."""
+    story_id = get_story_id_by_title(title)
+    return get_story(story_id) if story_id else None
+
+
 def list_stories(child_id: str) -> list[Story]:
     """Return all stories for a child, newest first (by created_at)."""
-    story_ids = redis_client.index_members(f"child:{child_id}:stories")
+    story_ids = app_redis_client.index_members(f"child:{child_id}:stories")
     stories = []
     for sid in story_ids:
         s = get_story(sid)
@@ -135,7 +156,7 @@ def seed_demo() -> None:
 
     Idempotent: does nothing when the children index is non-empty.
     """
-    if redis_client.index_members("children"):
+    if profile_redis_client.index_members("children"):
         logger.info("Demo data already present; skipping seed.")
         return
 

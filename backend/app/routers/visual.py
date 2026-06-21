@@ -9,15 +9,16 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from ..dependencies import require_auth
 from ..models.schemas import Story, VisualGenerateRequest
 from ..services import memory as memory_service
 from ..services.visual import generate_scenes
 
 logger = logging.getLogger("lullow.routers.visual")
 
-router = APIRouter(prefix="/api/visual", tags=["visual"])
+router = APIRouter(prefix="/api/visual", tags=["visual"], dependencies=[Depends(require_auth)])
 
 
 @router.post("/generate", response_model=Story)

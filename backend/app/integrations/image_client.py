@@ -19,6 +19,7 @@ import logging
 from typing import Optional
 
 from ..config import settings
+from .midjourney_client import midjourney_client
 
 logger = logging.getLogger("lullow.image")
 
@@ -77,10 +78,16 @@ class ImageClient:
         """Return (image_url_or_data_uri, is_mock)."""
         full_prompt = f"{prompt}. STYLE: {STYLE_STRING}"
         if not self.live:
+            # If the global image client is not live, still allow a configured
+            # midjourney provider to handle the request. Otherwise return mock.
+            if settings.midjourney_api_key and settings.midjourney_base_url:
+                return midjourney_client.generate_image(prompt, reference_image_url=reference_image_url)
             return _mock_scene_svg(prompt), True
         try:
             if self.provider == "gemini":
                 return self._gemini(full_prompt, reference_image_url), False
+            if self.provider == "midjourney":
+                return midjourney_client.generate_image(full_prompt, reference_image_url=reference_image_url)
             return self._openai(full_prompt, reference_image_url), False
         except Exception as exc:  # pragma: no cover - network dependent
             logger.warning("Image generation failed, using mock: %s", exc)
@@ -91,7 +98,7 @@ class ImageClient:
 
         url = (
             "https://generativelanguage.googleapis.com/v1beta/models/"
-            f"gemini-2.5-flash-image:generateContent?key={settings.gemini_api_key}"
+            f"{settings.gemini_image_model}:generateContent"
         )
         parts: list[dict] = [{"text": prompt}]
 
@@ -110,7 +117,12 @@ class ImageClient:
                 logger.warning("Could not inline reference image for Gemini: %s", exc)
 
         payload = {"contents": [{"parts": parts}]}
-        resp = httpx.post(url, json=payload, timeout=60)
+        resp = httpx.post(
+            url,
+            headers={"x-goog-api-key": settings.gemini_api_key},
+            json=payload,
+            timeout=60,
+        )
         resp.raise_for_status()
         data = resp.json()
         for part in data["candidates"][0]["content"]["parts"]:

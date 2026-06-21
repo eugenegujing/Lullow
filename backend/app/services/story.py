@@ -21,7 +21,6 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-from ..integrations.anthropic_client import anthropic_client
 from ..integrations.arize_client import arize_client
 from ..models.schemas import (
     ChildProfile,
@@ -41,9 +40,11 @@ from ..prompts.prompts import STORY_GENERATION_SYSTEM, STORY_REVISE_SYSTEM
 from . import memory as memory_service
 from .emotion import extract_emotion
 from .planner import build_plan
+from .prompt_agent import prompt_agent
 from .review_trail import build_review_trail
 from .ritual import generate_ritual
 from .safety import detect_escalation, evaluate_story
+from .story_retrieval import index_story_from_context
 
 logger = logging.getLogger("lullow.story")
 
@@ -111,7 +112,7 @@ def _generate_body(
         f"Write a gentle, cozy, personalized bedtime story for {child_name}."
     )
 
-    result, used_mock = anthropic_client.generate_json(
+    result, used_mock = prompt_agent.generate_json(
         STORY_GENERATION_SYSTEM,
         user_msg,
         mock={"title": mock_title, "body": mock_body},
@@ -163,7 +164,7 @@ def generate_story(
         used_mock["emotion"] = False  # came from caller, not generated here
     else:
         extraction = extract_emotion(req.raw_input, req.speaker)
-        used_mock["emotion"] = not anthropic_client.live
+        used_mock["emotion"] = False
 
     # 3. Check escalation from BOTH keyword screen AND extraction.safety_flag
     #    (mirrors session.py logic — P0-1 + P0-3)
@@ -194,7 +195,7 @@ def generate_story(
 
     # 4. Build plan
     plan = build_plan(extraction, profile, world, settings)
-    used_mock["plan"] = not anthropic_client.live
+    used_mock["plan"] = False
 
     # 5. Generate story body
     title, body, body_mock = _generate_body(plan, profile, world, settings)
@@ -202,7 +203,7 @@ def generate_story(
 
     # 6. Evaluate safety — gate on result; regenerate once if needed (P0-2)
     safety_eval = evaluate_story(body, settings)
-    used_mock["safety"] = not anthropic_client.live
+    used_mock["safety"] = False
 
     if not safety_eval.passed:
         # Build an extra_avoid list from blocked hits + scary terms in the body
@@ -220,7 +221,7 @@ def generate_story(
         )
         used_mock["story"] = body_mock2
         safety_eval2 = evaluate_story(body2, settings)
-        used_mock["safety"] = not anthropic_client.live
+        used_mock["safety"] = False
 
         if safety_eval2.passed:
             title, body, safety_eval = title2, body2, safety_eval2
@@ -252,7 +253,7 @@ def generate_story(
             used_mock["story"] = True
             # Re-evaluate the deterministic mock (it is guaranteed safe but keep the eval)
             safety_eval = evaluate_story(body, settings)
-            used_mock["safety"] = not anthropic_client.live
+            used_mock["safety"] = False
 
     # 7. Generate ritual (deterministic by default — no Claude call)
     ritual = generate_ritual(plan, profile)
@@ -297,6 +298,7 @@ def generate_story(
 
     # 11. Save to memory (only stories whose safety_evaluation.passed is True)
     memory_service.save_story(story)
+    index_story_from_context(story, extraction, profile, world, settings)
 
     return story, None, used_mock
 
@@ -334,7 +336,7 @@ def revise_story(req: StoryReviseRequest) -> tuple[Story, dict[str, bool]]:
         "gentle, and bedtime-appropriate."
     )
 
-    result, revise_mock = anthropic_client.generate_json(
+    result, revise_mock = prompt_agent.generate_json(
         STORY_REVISE_SYSTEM,
         user_msg,
         mock=mock_revised,
@@ -348,7 +350,7 @@ def revise_story(req: StoryReviseRequest) -> tuple[Story, dict[str, bool]]:
 
     # Re-evaluate safety
     safety_eval = evaluate_story(new_body, settings)
-    used_mock["safety"] = not anthropic_client.live
+    used_mock["safety"] = False
 
     # Append instruction to review trail
     updated_trail = original.review_trail.model_copy(

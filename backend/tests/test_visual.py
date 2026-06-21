@@ -29,10 +29,10 @@ def _get_story_and_world():
     return story, world
 
 
-def test_generate_scenes_returns_three_to_five():
+def test_generate_scenes_returns_three_to_four():
     story, world = _get_story_and_world()
     updated = generate_scenes(story, world, animate=False)
-    assert 3 <= len(updated.scenes) <= 5
+    assert 3 <= len(updated.scenes) <= 4
 
 
 def test_generate_scenes_each_has_safety_filtered_prompt():
@@ -80,6 +80,29 @@ def test_generate_scenes_indices_are_sequential():
     updated = generate_scenes(story, world, animate=False)
     for i, scene in enumerate(updated.scenes):
         assert scene.index == i
+
+
+def test_generate_scenes_adds_slide_cache_metadata():
+    story, world = _get_story_and_world()
+    updated = generate_scenes(story, world, animate=False)
+    for scene in updated.scenes:
+        assert scene.narration_text == scene.text
+        assert scene.image_cache_key
+        assert scene.text_hash
+        assert scene.narration_audio_base64 is None
+        assert ":nino-the-fox:" in scene.image_cache_key
+
+
+def test_generate_scenes_does_not_cache_mock_images():
+    from app.services.asset_cache import get_cached_asset
+
+    story, world = _get_story_and_world()
+    updated = generate_scenes(story, world, animate=False)
+
+    for scene in updated.scenes:
+        assert scene.is_image_mock is True
+        assert scene.image_cache_key
+        assert get_cached_asset(scene.image_cache_key) is None
 
 
 def test_generate_scenes_text_nonempty():

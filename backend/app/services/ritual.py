@@ -13,9 +13,9 @@ from __future__ import annotations
 
 import logging
 
-from ..integrations.anthropic_client import anthropic_client
 from ..models.schemas import ChildProfile, Emotion, Ritual, StoryPlan
 from ..prompts.prompts import RITUAL_SYSTEM
+from .prompt_agent import prompt_agent
 
 logger = logging.getLogger("lullow.ritual")
 
@@ -123,7 +123,7 @@ def generate_ritual(plan: StoryPlan, profile: ChildProfile) -> Ritual:
         "soft, and sleep-oriented. Two or three simple steps at most."
     )
 
-    result, _ = anthropic_client.generate_json(
+    result, _ = prompt_agent.generate_json(
         RITUAL_SYSTEM,
         user_msg,
         mock=mock_dict,

@@ -7,15 +7,16 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from ..dependencies import require_auth
 from ..integrations.arize_client import arize_client
 from ..models.schemas import GrowthJournal
 from ..services.journal import build_journal
 
 logger = logging.getLogger("lullow.routers.journal")
 
-router = APIRouter(prefix="/api/journal", tags=["journal"])
+router = APIRouter(prefix="/api/journal", tags=["journal"], dependencies=[Depends(require_auth)])
 
 
 @router.get("/evals/recent")
