@@ -155,6 +155,7 @@ export interface StoryPlan {
 export interface StoryScene {
   index: number
   text: string
+  mood?: string
   image_prompt: string
   image_url?: string | null
   clip_url?: string | null
@@ -327,6 +328,18 @@ const put = <T>(path: string, body: unknown) =>
 // System
 export const getStatus  = () => get<StatusResponse>('/api/status')
 export const getHealth  = () => get<{ status: string; app: string }>('/api/health')
+
+// Physical mood lamp — fire-and-forget; must NEVER block or break playback.
+export function setLampMood(mood: string): void {
+  void fetch(`${BASE}/api/lamp/mood`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mood }),
+  }).catch(() => {})
+}
+export function lampOff(): void {
+  void fetch(`${BASE}/api/lamp/off`, { method: 'POST' }).catch(() => {})
+}
 
 // Profile
 export const getProfiles       = () => get<ChildProfile[]>('/api/profile')

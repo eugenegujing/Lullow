@@ -25,6 +25,7 @@ from ..models.schemas import Story, StoryScene, StoryWorld
 from ..prompts.prompts import SCENE_SPLIT_SYSTEM
 from . import memory as memory_service
 from .safety import filter_image_prompt
+from ..integrations.govee_client import resolve_mood
 
 logger = logging.getLogger("lullow.visual")
 
@@ -56,6 +57,7 @@ def _split_scenes(story: Story, world: StoryWorld) -> list[dict]:
                 f"A moonlit {setting.lower()}, soft warm glow, gentle stars appearing, "
                 "cozy atmosphere, watercolor storybook style, low saturation, rounded shapes"
             ),
+            "mood": "night",
         },
         {
             "text": (
@@ -67,6 +69,7 @@ def _split_scenes(story: Story, world: StoryWorld) -> list[dict]:
                 f"{setting.lower()}, warm amber glow, cozy and peaceful, "
                 "storybook illustration, soft colors"
             ),
+            "mood": "cozy",
         },
         {
             "text": (
@@ -78,6 +81,7 @@ def _split_scenes(story: Story, world: StoryWorld) -> list[dict]:
                 "warm golden light, a child sleeping peacefully, storybook illustration, "
                 "low saturation, gentle and cozy"
             ),
+            "mood": "sleepy",
         },
     ]
 
@@ -175,6 +179,9 @@ def generate_scenes(story: Story, world: StoryWorld, animate: bool = True) -> St
         text = raw.get("text", "")
         raw_prompt = raw.get("image_prompt", "")
 
+        # Resolve the scene mood: Claude's tag if valid, else keyword fallback
+        mood = resolve_mood(raw.get("mood"), f"{text} {raw_prompt}")
+
         # Safety-filter the image prompt
         safe_prompt = filter_image_prompt(raw_prompt)
 
@@ -209,6 +216,7 @@ def generate_scenes(story: Story, world: StoryWorld, animate: bool = True) -> St
             StoryScene(
                 index=idx,
                 text=text,
+                mood=mood,
                 image_prompt=safe_prompt,
                 image_url=image_url or None,
                 clip_url=clip_url,

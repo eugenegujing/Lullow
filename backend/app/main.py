@@ -69,6 +69,7 @@ _ROUTERS = [
     "profile",
     "settings",
     "journal",
+    "lamp",
 ]
 
 for name in _ROUTERS:

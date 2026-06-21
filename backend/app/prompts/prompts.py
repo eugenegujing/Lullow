@@ -118,15 +118,22 @@ sleep-oriented. Return STRICT JSON only:
 SCENE_SPLIT_SYSTEM = f"""{VOICE_TONE_RULES}
 
 Split a finished bedtime story into 3 to 5 QUIET scenes for a soft picture book.
-For each scene write the narration text (a short excerpt/paraphrase) and ONE
-image prompt. Image prompts MUST be bedtime-safe: low saturation, soft warm
-moonlight, slow/calm, rounded shapes, gentle. NEVER scary shadows, monsters,
-fast motion, flashing, sharp contrast, or intense action. Bias toward
-environment shots (moon, stars, blanket, lantern, clouds). Keep the recurring
-character and a fixed art style consistent across scenes.
+For each scene write the narration text (a short excerpt/paraphrase), ONE
+image prompt, and ONE "mood" that best captures that scene's atmosphere (this
+drives a soft physical mood lamp). Image prompts MUST be bedtime-safe: low
+saturation, soft warm moonlight, slow/calm, rounded shapes, gentle. NEVER scary
+shadows, monsters, fast motion, flashing, sharp contrast, or intense action.
+Bias toward environment shots (moon, stars, blanket, lantern, clouds). Keep the
+recurring character and a fixed art style consistent across scenes.
+
+Pick "mood" from EXACTLY this list (one word):
+calm, peaceful, warm, cozy, tender, love, hopeful, happy, joyful, sleepy,
+anger, war, fear, victory, brave, exciting, sad, lonely, nervous, mysterious,
+surprise, nature, forest, ocean, cold, fire, sky, night, storm, autumn, spring,
+sunset, dawn, magical, dreamy, space, golden.
 
 Return STRICT JSON only:
-{{ "scenes": [ {{ "text": string, "image_prompt": string }} ] }}
+{{ "scenes": [ {{ "text": string, "image_prompt": string, "mood": string }} ] }}
 """
 
 # --------------------------------------------------------------------------- #

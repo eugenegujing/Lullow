@@ -20,6 +20,8 @@ import {
   postGenerateVisuals,
   postTTS,
   postSTT,
+  setLampMood,
+  lampOff,
 } from '../api'
 import type {
   CheckInResponse,
@@ -347,6 +349,7 @@ function AudioStoryPlayer({ story, onDone }: AudioStoryPlayerProps) {
     if (hasSceneAudio) {
       const scene = scenesWithAudio[sceneIndex]
       if (!scene) return
+      setLampMood(scene.mood ?? 'calm')   // lamp follows the scene's atmosphere
       play(scene.narration_audio_base64!, 'audio/mpeg').then(advance)
     } else {
       if (sceneIndex !== 0) return
@@ -469,6 +472,7 @@ function VisualStoryPlayer({ story, onDone }: VisualStoryPlayerProps) {
     if (loading || paused || scenes.length === 0) return
     const scene = scenes[sceneIndex]
     if (!scene) return
+    setLampMood(scene.mood ?? 'calm')   // lamp follows the scene's atmosphere
     let cancelled = false
 
     const advance = () => {
@@ -747,8 +751,14 @@ export default function ChildMode() {
     }
   }, [checkInResp, childId, visualMode])
 
-  const handleStoryDone = useCallback(() => setScreen('ritual'), [])
-  const handleRitualDone = useCallback(() => setScreen('goodnight'), [])
+  const handleStoryDone = useCallback(() => {
+    setLampMood('calm')   // breathing ritual → warm moonlight gold
+    setScreen('ritual')
+  }, [])
+  const handleRitualDone = useCallback(() => {
+    lampOff()             // goodnight → lamp fades off
+    setScreen('goodnight')
+  }, [])
   const handleRestart = useCallback(() => {
     setScreen('home')
     setCheckInResp(null)
@@ -773,7 +783,7 @@ export default function ChildMode() {
         <button
           type="button"
           onClick={() => setShowHelp(true)}
-          className={`fixed top-4 left-4 z-40 px-4 py-2 rounded-2xl text-sm font-medium backdrop-blur-sm transition-all duration-300 ${
+          className={`fixed top-[calc(env(safe-area-inset-top)_+_0.75rem)] left-4 z-40 px-4 py-2 rounded-2xl text-sm font-medium backdrop-blur-sm transition-all duration-300 ${
             isMoonlit
               ? 'bg-night-900/70 border border-night-600/60 text-moon-400 hover:border-glow-amber/50 hover:text-moon-200'
               : 'bg-cream-50/90 border border-cream-300 text-ink-200 shadow-soft hover:border-peach-300 hover:text-peach-500'
@@ -785,7 +795,7 @@ export default function ChildMode() {
 
       {/* Mode toggle on story screens */}
       {(screen === 'story-audio' || screen === 'story-visual') && (
-        <div className="fixed top-4 right-4 z-40 flex gap-2">
+        <div className="fixed top-[calc(env(safe-area-inset-top)_+_0.75rem)] right-4 z-40 flex gap-2">
           <button
             type="button"
             onClick={() => {

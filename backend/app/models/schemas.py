@@ -169,6 +169,7 @@ class StoryScene(BaseModel):
     index: int
     text: str               # narration text for this page
     image_prompt: str       # safety-filtered prompt for the image model
+    mood: str = "calm"      # scene atmosphere -> drives the physical lamp color
     image_url: Optional[str] = None
     clip_url: Optional[str] = None       # Pika low-motion animation
     narration_audio_base64: Optional[str] = None
