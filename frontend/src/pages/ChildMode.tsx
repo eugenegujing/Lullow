@@ -151,16 +151,26 @@ function CheckInScreen({ childId, avatar, onResult, onError }: CheckInScreenProp
 
   const handleVoiceBlob = useCallback(
     async (blob: Blob) => {
+      if (busy) return
       setBusy(true)
       try {
         const transcript = await postSTT(blob)
-        await submit(transcript.text)
+        const text = transcript.text.trim()
+        if (!text) {
+          onError("I couldn't quite hear that — try again, or type it instead.")
+          return
+        }
+        // Do the check-in directly here (going through submit() would be blocked
+        // by its own `busy` guard, since we already set busy=true above).
+        const response = await postCheckIn({ child_id: childId, speaker: 'child', text })
+        onResult(response, text)
       } catch (e) {
         onError(e instanceof Error ? e.message : 'Could not understand audio. Please type instead.')
+      } finally {
         setBusy(false)
       }
     },
-    [submit, onError],
+    [busy, childId, onResult, onError],
   )
 
   return (
