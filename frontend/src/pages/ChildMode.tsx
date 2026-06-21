@@ -35,7 +35,6 @@ type Screen =
   | 'escalation'
   | 'generating'
   | 'story-audio' // bedtime default: lights-out narration
-  | 'story-visual' // kept; only reached via the storybook path
   | 'storybook' // post-goodnight picture-book view
   | 'goodnight'
 
@@ -684,7 +683,7 @@ export default function ChildMode() {
           {screen === 'story-audio' && story && (
             <AudioStoryPlayer story={story} onDone={handleStoryDone} />
           )}
-          {/* story-visual is reached only via the storybook path */}
+          {/* The picture-book is shown only after goodnight (morning re-read). */}
           {screen === 'storybook' && story && (
             <VisualStoryPlayer
               story={story}
