@@ -118,6 +118,11 @@ export default {
         'fade-in-fast':   'fadeIn 0.3s ease-out',
         'slide-up':       'slideUp 0.5s ease-out',
         'pop-in':         'popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        // Slow, calm cross-fade for crossing between bedtime screens.
+        'cross-fade':     'fadeIn 1.1s ease-in-out',
+        // Gentle fade + rise, used for the post-goodnight storybook reveal.
+        // `both` holds the start state so a stagger delay shows nothing first.
+        'fade-rise':      'fadeRise 1.2s ease-out both',
       },
       keyframes: {
         twinkle: {
@@ -147,6 +152,12 @@ export default {
         popIn: {
           '0%':   { opacity: '0', transform: 'scale(0.92)' },
           '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        // A soft fade upward — calmer and slower than slideUp, for the
+        // bedtime storybook reveal after "Sweet dreams".
+        fadeRise: {
+          '0%':   { opacity: '0', transform: 'translateY(14px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         },
       },
       transitionDuration: {

@@ -66,7 +66,7 @@ class Settings(BaseSettings):
     # Image model
     image_provider: str = "gemini"
     gemini_api_key: str = ""
-    gemini_image_model: str = "gemini-3.1-flash-image"
+    gemini_image_model: str = "gemini-2.5-flash-image"
     openai_api_key: str = ""
     # Midjourney-like provider (optional)
     midjourney_api_key: str = ""

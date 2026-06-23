@@ -32,7 +32,6 @@ from ..models.schemas import (
     StoryPlan,
     StoryRequest,
     StoryReviseRequest,
-    StorySearchRequest,
     StoryWorld,
     VisualMode,
 )
@@ -43,8 +42,7 @@ from .planner import build_plan
 from .prompt_agent import prompt_agent
 from .review_trail import build_review_trail
 from .safety import detect_escalation, evaluate_story
-from .story_retrieval import index_story_from_context, search_story
-from .demo_happy_path import demo_story_id, ensure_demo_story_for_child
+from .story_retrieval import index_story_from_context
 
 logger = logging.getLogger("lullow.story")
 
@@ -114,23 +112,7 @@ def _generate_body(
         f"one by one, all through the night."
     )
 
-    mock_body = (
-        f"In {setting}, {child_name} sat with {char_name} under a soft moon glow. "
-        f"The big feeling was there, but the room was quiet, and the blanket was warm.\n\n"
-        f"{char_name} pointed to one small safe thing, then another. Together they "
-        f"noticed the pillow, the window, and the gentle light waiting nearby.\n\n"
-        f"They took slow bedtime breaths. In came calm; out went the busy feeling. "
-        f"Little by little, {child_name}'s body remembered how to rest.\n\n"
-        f"{plan.resolution} And {child_name} learned that even a big feeling can become "
-        f"smaller when we meet it with kindness, patience, and one gentle step."
-    )
-
-    slide_count = max(3, min(4, profile.preferred_story_length_minutes // 2 or 3))
-    target_words = 45 * slide_count
-    length_hint = (
-        f"{slide_count} picture-book slides, about {target_words} words total, "
-        "35-60 spoken words per slide"
-    )
+    length_hint = f"{profile.preferred_story_length_minutes} minutes when read aloud"
 
     avoid_list = list(plan.avoid)
     if extra_avoid:
@@ -147,10 +129,6 @@ def _generate_body(
         f"  main character: {plan.main_character or 'a gentle friend'}\n"
         f"  setting: {plan.setting or setting}\n"
         f"Target length: {length_hint}\n"
-        "Format: 3-4 short paragraphs separated by blank lines; each paragraph "
-        "must become one slide with one clear imageable moment.\n"
-        "Ending: include a soft inspiring moral about finding comfort, courage, "
-        "kindness, patience, or calm in small gentle steps.\n"
         f"Write a gentle, cozy, personalized bedtime story for {child_name}."
     )
 
@@ -238,39 +216,6 @@ def generate_story(
     # 4. Build plan
     plan = build_plan(extraction, profile, world, settings)
     used_mock["plan"] = False
-
-    # Keep the Redis demo story fresh so older cached records do not win during
-    # the hackathon happy path.
-    raw_lower = req.raw_input.lower()
-    demo_markers = ("lonely", "friend", "sad")
-    seeded_demo_story = None
-    if any(marker in raw_lower for marker in demo_markers):
-        seeded_demo_story = ensure_demo_story_for_child(profile, world)
-    elif memory_service.get_story(demo_story_id(req.child_id)) is not None:
-        ensure_demo_story_for_child(profile, world)
-
-    rag_result = search_story(
-        StorySearchRequest(
-            child_id=req.child_id,
-            emotion=extraction.emotion,
-            comfort_goal=plan.theme,
-            story_strategy=plan.resolution,
-            character=plan.main_character,
-            setting=plan.setting,
-        ),
-        settings,
-        min_score=0.45,
-    )
-    if rag_result.matched and rag_result.story_id:
-        reused_story = memory_service.get_story(rag_result.story_id)
-        if reused_story is not None:
-            used_mock["rag_reused"] = True
-            used_mock["story"] = False
-            return reused_story, None, used_mock
-    if seeded_demo_story is not None:
-        used_mock["rag_reused"] = True
-        used_mock["story"] = False
-        return seeded_demo_story, None, used_mock
 
     # 5. Generate story body
     title, body, body_mock = _generate_body(plan, profile, world, settings)

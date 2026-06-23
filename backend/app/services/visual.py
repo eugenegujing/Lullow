@@ -29,31 +29,14 @@ logger = logging.getLogger("lullow.visual")
 def _split_scenes(story: Story, world: StoryWorld) -> list[dict]:
     """Split the story into 3-4 quiet picture-book scenes."""
     char_hint = ""
-    character = story.plan.main_character or "a gentle bedtime companion"
     if world.recurring_characters:
         char = world.recurring_characters[0]
-        character = f"{char.name} the {char.species}"
         char_hint = (
             f"Recurring character: {char.name} the {char.species} "
             f"({', '.join(char.traits)})."
         )
 
     setting = world.recurring_setting or story.plan.setting or "a soft, cozy place"
-
-    paragraphs = [p.strip() for p in story.body.split("\n\n") if p.strip()]
-    if 3 <= len(paragraphs) <= 4:
-        return [
-            {
-                "text": paragraph,
-                "image_prompt": _simple_prompt_from_text(
-                    paragraph,
-                    character=character,
-                    setting=setting,
-                ),
-                "mood": "sleepy" if index == len(paragraphs) - 1 else "cozy",
-            }
-            for index, paragraph in enumerate(paragraphs)
-        ]
 
     mock_scenes = [
         {
@@ -62,20 +45,19 @@ def _split_scenes(story: Story, world: StoryWorld) -> list[dict]:
                 "the stars began to appear one by one, each a tiny lantern."
             ),
             "image_prompt": (
-                f"Wide picture-book view of {setting.lower()} under soft moonlight, "
-                f"{character} looking up calmly as tiny stars appear one by one like lanterns, "
-                "foreground moonlit path, background quiet sky, low saturation, rounded shapes"
+                f"A moonlit {setting.lower()}, soft warm glow, gentle stars appearing, "
+                "cozy atmosphere, watercolor storybook style, low saturation, rounded shapes"
             ),
             "mood": "night",
         },
         {
             "text": (
-                f"{character} curled up "
+                f"{story.plan.main_character or 'a gentle little friend'} curled up "
                 "beneath a blanket of moonbeams, feeling very safe and warm."
             ),
             "image_prompt": (
-                f"{character} curled beneath a soft moonbeam blanket in {setting.lower()}, "
-                "warm amber lamp glow, relaxed body language, peaceful face, cozy bedding, "
+                "A small gentle animal friend curled under a soft moonlit blanket, "
+                f"{setting.lower()}, warm amber glow, cozy and peaceful, "
                 "storybook illustration, soft colors"
             ),
             "mood": "cozy",
@@ -86,9 +68,9 @@ def _split_scenes(story: Story, world: StoryWorld) -> list[dict]:
                 "soft as a cloud, gentle as moonlight."
             ),
             "image_prompt": (
-                f"Final sleepy scene in {setting.lower()}, {character} resting beside a pillow "
-                "as soft stars drift past, warm golden moonlight, everything quiet and safe, "
-                "storybook illustration, low saturation, gentle and cozy"
+                "A quiet moonlit bedroom, soft stars drifting past a window, "
+                "warm golden light, a child sleeping peacefully, storybook illustration, "
+                "low saturation, gentle and cozy"
             ),
             "mood": "sleepy",
         },
@@ -97,16 +79,11 @@ def _split_scenes(story: Story, world: StoryWorld) -> list[dict]:
     user_msg = (
         f"Story title: {story.title}\n"
         f"Story body:\n{story.body}\n\n"
-        f"Story plan theme: {story.plan.theme}\n"
-        f"Main character to keep consistent: {character}\n"
         f"Story world: {setting}\n"
         f"{char_hint}\n"
-        "Split this story into 3-4 quiet picture-book scenes. For each slide, "
-        "make the image prompt describe the exact narration moment, including "
-        "the character, setting, key object, body language, lighting, and "
-        "foreground/background composition. Bias toward environment shots "
-        "(moon, stars, forest, blanket, lantern), but keep the actual story "
-        "action visible. Keep character close-ups minimal to avoid consistency issues."
+        "Split this story into 2-3 quiet picture-book scenes. "
+        "Bias toward environment shots (moon, stars, forest, blanket, lantern). "
+        "Keep character close-ups minimal to avoid consistency issues."
     )
 
     result, _ = prompt_agent.generate_json(
@@ -118,64 +95,9 @@ def _split_scenes(story: Story, world: StoryWorld) -> list[dict]:
     )
 
     scenes = result.get("scenes", mock_scenes)
-    if not isinstance(scenes, list) or len(scenes) < 3:
+    if not isinstance(scenes, list) or len(scenes) < 2:
         scenes = mock_scenes
-    return scenes[:4]
-
-
-def _simple_prompt_from_text(text: str, *, character: str, setting: str) -> str:
-    lower = text.lower()
-    if "lamp" in lower:
-        action = "a tiny glowing moon lamp beside a cozy bed"
-    elif "path" in lower or "light" in lower:
-        action = "a soft silver moonbeam path touching the blanket and pillow"
-    elif "breath" in lower:
-        action = "the child and companion taking slow calm breaths under a blanket"
-    elif "sleep" in lower or "eyes" in lower:
-        action = "the child resting peacefully as sleep comes close"
-    else:
-        action = text[:140]
-    return f"{character} in {setting}, {action}"
-
-
-def _page_prompt(
-    *,
-    story: Story,
-    scene_text: str,
-    raw_prompt: str,
-    character: str | None,
-    setting: str | None,
-    scene_index: int,
-    total_scenes: int,
-) -> str:
-    """Build a simple image prompt anchored to the slide narration."""
-    character_hint = character or "the story's gentle bedtime companion"
-    setting_hint = setting or "the story's quiet bedtime setting"
-    return (
-        f"Create one simple bedtime picture-book image for page {scene_index + 1} "
-        f"of {total_scenes}.\n"
-        f"Story line: {scene_text}\n"
-        f"Show only this moment: {raw_prompt}\n"
-        f"Character: {character_hint}\n"
-        f"Setting: {setting_hint}\n"
-        "Composition: one clear foreground subject, simple background, soft "
-        "moonlight, no text, no labels, no extra characters, no scary shadows."
-    )
-
-
-def _existing_slide_specs(story: Story) -> list[dict]:
-    specs: list[dict] = []
-    for scene in story.scenes:
-        if not scene.text.strip():
-            continue
-        specs.append(
-            {
-                "text": scene.text,
-                "image_prompt": scene.image_prompt or scene.text,
-                "mood": scene.mood,
-            }
-        )
-    return specs
+    return scenes[:3]  # 2-3 looping scenes is enough
 
 
 def _ensure_master_reference(world: StoryWorld) -> tuple[StoryWorld, str | None]:
@@ -220,7 +142,7 @@ def _ensure_master_reference(world: StoryWorld) -> tuple[StoryWorld, str | None]
 
 def generate_scenes(story: Story, world: StoryWorld, animate: bool = True) -> Story:
     """Populate story slides with images, optional clips, and narration audio."""
-    raw_scenes = _existing_slide_specs(story) or _split_scenes(story, world)
+    raw_scenes = _split_scenes(story, world)
     world, ref_image_url = _ensure_master_reference(world)
 
     character = story.plan.main_character
@@ -237,19 +159,9 @@ def generate_scenes(story: Story, world: StoryWorld, animate: bool = True) -> St
         raw_prompt = raw.get("image_prompt", "")
         # Resolve the scene mood: Claude's tag if valid, else keyword fallback.
         mood = resolve_mood(raw.get("mood"), f"{text} {raw_prompt}")
-        safe_prompt = filter_image_prompt(
-            _page_prompt(
-                story=story,
-                scene_text=text,
-                raw_prompt=raw_prompt,
-                character=character,
-                setting=setting,
-                scene_index=idx,
-                total_scenes=len(raw_scenes),
-            )
-        )
+        safe_prompt = filter_image_prompt(raw_prompt)
         image_key = image_cache_key(
-            story_title=f"{story.title}:{text_hash(raw_prompt, length=8)}",
+            story_title=story.title,
             character=character,
             setting=setting,
             emotion=emotion,

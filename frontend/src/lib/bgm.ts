@@ -9,13 +9,18 @@
  */
 // Calming piano tracks (royalty-free, Pixabay). One is chosen at random on each
 // page load and loops for the whole session.
+import { rampVolume } from './audioFade'
+
 const BGM_TRACKS = [
   '/bgm/atlasaudio-nature-piano-519619.mp3',
   '/bgm/leberch-piano-516448.mp3',
   '/bgm/the_mountain-piano-piano-music-490009.mp3',
 ]
-const BASE_VOLUME = 0.18 // quiet bed, well under narration
-const DUCK_VOLUME = 0.05 // lowered while narration plays
+// One STEADY level for the whole session — the lullaby never ducks. It sits as a
+// gentle, constant bed; the narration eases in over the top (see useAudio.ts) so
+// there is no jarring dip/swell as the voice starts and stops.
+const BASE_VOLUME = 0.1
+const FADE_MS = 1200 // gentle fade-in when the music first starts
 const MUTE_KEY = 'lullow.bgmMuted'
 
 let el: HTMLAudioElement | null = null
@@ -34,7 +39,7 @@ function getEl(): HTMLAudioElement {
     el = new Audio(src)
     el.loop = true
     el.preload = 'auto'
-    el.volume = BASE_VOLUME
+    el.volume = 0 // starts silent; startBgm() fades it up to BASE_VOLUME
   }
   return el
 }
@@ -43,24 +48,15 @@ function getEl(): HTMLAudioElement {
 export function startBgm(): void {
   if (muted()) return
   const a = getEl()
-  a.volume = BASE_VOLUME
-  a.play().catch(() => {
-    /* autoplay blocked until a gesture, or file not present — fail soft */
-  })
+  a.play()
+    .then(() => rampVolume(a, BASE_VOLUME, FADE_MS)) // ease in, no abrupt onset
+    .catch(() => {
+      /* autoplay blocked until a gesture, or file not present — fail soft */
+    })
 }
 
 export function stopBgm(): void {
   if (el) el.pause()
-}
-
-/** Lower the music while narration speaks. */
-export function duckBgm(): void {
-  if (el && !muted()) el.volume = DUCK_VOLUME
-}
-
-/** Restore the music level after narration ends. */
-export function unduckBgm(): void {
-  if (el && !muted()) el.volume = BASE_VOLUME
 }
 
 export function isBgmMuted(): boolean {
@@ -78,8 +74,8 @@ export function toggleBgmMuted(): boolean {
   if (el) {
     if (next) el.pause()
     else {
-      el.volume = BASE_VOLUME
-      el.play().catch(() => {})
+      el.volume = 0
+      el.play().then(() => rampVolume(el!, BASE_VOLUME, FADE_MS)).catch(() => {})
     }
   }
   return next

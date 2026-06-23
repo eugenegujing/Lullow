@@ -23,6 +23,7 @@ import { useProfiles } from '../context/ProfileContext'
 import WarmBackground from '../components/WarmBackground'
 import Brand from '../components/Brand'
 import ProfileSwitcher from '../components/ProfileSwitcher'
+import StorybookReader from '../components/StorybookReader'
 import {
   Button, Card, ChipInput, SectionHeader, Slider, TextField, Toggle, Avatar,
 } from '../components/ui'
@@ -474,9 +475,11 @@ function ReviewTrailCard({ story, onApprove, onRevise, approving, revising }: Re
   const [annotations, setAnnotations] = useState<AnnotationLabels>({})
   const [annoSaving, setAnnoSaving] = useState(false)
   const [annoMsg, setAnnoMsg] = useState('')
+  const [showStorybook, setShowStorybook] = useState(false)
   const trail = story.review_trail
   const ev = story.safety_evaluation
   const approved = trail.final_status === 'parent_approved'
+  const hasStorybook = story.scenes.some(s => s.image_url || s.clip_url)
 
   const saveAnnotation = async () => {
     setAnnoSaving(true)
@@ -562,6 +565,11 @@ function ReviewTrailCard({ story, onApprove, onRevise, approving, revising }: Re
         <Button variant="secondary" size="sm" onClick={() => setAnnotating(a => !a)}>
           🏷 Label
         </Button>
+        {hasStorybook && (
+          <Button variant="secondary" size="sm" onClick={() => setShowStorybook(true)}>
+            📖 View storybook
+          </Button>
+        )}
       </div>
 
       {/* Revision box */}
@@ -623,6 +631,11 @@ function ReviewTrailCard({ story, onApprove, onRevise, approving, revising }: Re
           </Button>
           {annoMsg && <span className="ml-3 text-xs text-sage-500 font-medium">{annoMsg}</span>}
         </div>
+      )}
+
+      {/* Silent picture-book viewer for this story's illustrated pages. */}
+      {showStorybook && (
+        <StorybookReader story={story} onClose={() => setShowStorybook(false)} />
       )}
     </Card>
   )

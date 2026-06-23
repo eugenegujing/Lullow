@@ -11,7 +11,6 @@
  * onClick (e.g. the welcome button) and ideally again on the player's start.
  */
 import { useState, useCallback, useEffect } from 'react'
-import { duckBgm, unduckBgm } from '../lib/bgm'
 
 // 0-length silent WAV — valid header, no samples; used only to grant playback.
 const SILENT_WAV =
@@ -19,6 +18,9 @@ const SILENT_WAV =
 
 // Slow narration for a gentler, calmer bedtime pace (pitch preserved → no chipmunk).
 const NARRATION_RATE = 0.9
+// Narration loudness (0–1). No fade — the voice plays straight at this level over
+// the steady lullaby bed. Turn this DOWN for a quieter voice, UP toward 1 for louder.
+const NARRATION_VOLUME = 0.6
 
 let sharedAudio: HTMLAudioElement | null = null
 
@@ -67,11 +69,12 @@ export function useAudio() {
         media.preservesPitch = true
         media.webkitPreservesPitch = true
         el.playbackRate = NARRATION_RATE
+        // No fade — the voice plays straight at its set level over the steady
+        // lullaby bed (which stays constant, no ducking).
+        el.volume = NARRATION_VOLUME
         setPlaying(true)
-        duckBgm() // soften the lullaby while narration speaks
         const done = () => {
           setPlaying(false)
-          unduckBgm()
           resolve()
         }
         el.onended = done
@@ -89,7 +92,7 @@ export function useAudio() {
       sharedAudio.src = ''
     }
     setPlaying(false)
-    unduckBgm() // restore the lullaby level when narration stops
+    // BGM stays at its steady level — nothing to restore.
   }, [])
 
   // Stop audio when the owning component unmounts (navigation, screen switch).

@@ -200,8 +200,6 @@ def _score_record(
     *,
     vector_score: float | None = None,
 ) -> tuple[float, list[str]]:
-    if record.child_id != req.child_id:
-        return 0.0, ["different child"]
     if record.rejected:
         return 0.0, ["rejected"]
     if not (record.liked or record.approved):
