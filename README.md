@@ -10,9 +10,10 @@
 
 Lullow is a **voice-first bedtime comfort companion for children ages 3–8**. It
 listens to a child's nighttime feelings, turns them into a gentle personalized
-lullaby story, narrates it in a calming voice, renders soft picture-book scenes,
-**syncs a physical mood lamp to each scene**, remembers each child's emotional
-growth, and stays inside parent-approved safety boundaries.
+lullaby story, narrates it in a calming voice while a **physical mood lamp
+follows each scene**, leaves a soft **picture-book keepsake** to read
+afterwards, remembers each child's emotional growth, and stays inside
+parent-approved safety boundaries.
 
 > Lullow is **not** a therapist or a generic story generator. It is a bedtime
 > emotional support companion built around **voice, memory, safety, and calm**.
@@ -111,12 +112,13 @@ Frontend (React + Vite + TS + Tailwind v4)        Backend (FastAPI, Python 3.12)
   ├── Profile picker  (route /)                     ├── Auth        → parent login + sessions
   │     moonlit dreamscape landing                  ├── Voice       → Deepgram (STT + Aura-2 TTS)
   ├── Child Bedtime Mode  (route /child)            ├── Story brain → Claude  ⇄  Fetch.ai ASI One
-  │     voice/text check-in, story player,          │     emotion → plan → safety → story
-  │     audio/picture toggle, breathing ritual,     │     → ritual → review trail
+  │     voice/text check-in → calming audio story   │     emotion → plan → safety → story body
+  │     → goodnight → silent picture-book keepsake, │     → safety eval → review trail
   │     looping lullaby BGM, "find a grown-up"      ├── RAG memory  → Redis (split app/profile DBs)
   └── Parent Dashboard  (route /parent)             │     vector store + agent memory
         profile, safety settings, story-world       ├── Visual      → image model → Pika clips
-        memory, history + review trail, journal      └── Mood lamp   → Govee (physical, per scene)
+        memory, history + review trail + storybook,  └── Mood lamp   → Govee (physical, per scene)
+        journal
 ```
 
 Two design principles run through everything:
@@ -143,16 +145,19 @@ Two design principles run through everything:
 - Voice-first emotional check-in (hold-to-talk mic → Deepgram STT) **with a text
   fallback** and keyboard support.
 - Gentle, voice/tone-compliant reflection of the child's feeling.
-- Per-session **Audio-only vs Picture-book** toggle — both fully work.
-- **Continuous, calming narration** with a gentle female voice (Deepgram
-  **Aura-2 `cora`**), slowed and pitch-preserved; long stories are stitched into
-  one clip so narration never plays in disjointed segments.
-- **Looping lullaby BGM** (soft piano) that starts on the first tap and ducks
-  under narration, with a mute toggle.
-- Picture-book scenes (2–3 quiet pages) with low-motion Pika clips, falling back
-  to the static page image.
-- **Physical mood lamp** (Govee) follows each scene's atmosphere — warm calm at
-  the breathing ritual, fading off at goodnight. Safe no-op without hardware.
+- **Audio-first bedtime.** The story is delivered as **continuous, calming
+  narration** with a gentle female voice (Deepgram **Aura-2 `cora`**), slowed and
+  pitch-preserved; long stories are stitched into one clip so narration never
+  plays in disjointed segments. Eyes can stay closed — no screen to watch.
+- **Looping lullaby BGM** (soft piano) that starts on the first tap and plays at
+  a steady level under the narration, with a mute toggle.
+- **Physical mood lamp** (Govee) follows each scene's atmosphere as the story
+  plays, then fades off at goodnight. Safe no-op without hardware.
+- **Silent picture-book keepsake.** While the audio plays, soft illustrations
+  (2–3 quiet pages) are painted **in the background**. They surface only *after*
+  goodnight as an optional "📖 Read last night's storybook" — a self-paced,
+  **silent** reader (no narration, no lamp). Generation never blocks or
+  interrupts the child; the button stays soft-disabled until the art is ready.
 - **Persistent "Find a grown-up" help button on every screen**, plus an
   automatic warm escalation screen on danger signals.
 
@@ -162,7 +167,8 @@ Two design principles run through everything:
 - **Family memory / story-world editor** (recurring character + setting + past
   themes), incl. the character's master reference-image thumbnail.
 - Story history with the full **review trail** (child said / memory used / safety
-  constraints / avoided topics / parent edits / status) and safety scores.
+  constraints / avoided topics / parent edits / status), safety scores, and a
+  **"📖 View storybook"** to read any story's illustrated pages.
 - Parent **revise** (e.g. "make softer") and **approve** (writes back to memory).
 - **Growth journal** (emotion counts + helpful elements + non-diagnostic
   reflection).
@@ -175,8 +181,9 @@ Two design principles run through everything:
 
 **Backend pipeline**
 `emotion → load memory + parent constraints → safety/escalation gate → plan →
-story body → safety evaluation (regenerates once / safe fallback) → ritual →
-review trail → save`. Visuals are a separate call so audio-only mode is instant.
+story body → safety evaluation (regenerates once / safe fallback) → review trail
+→ save`. Visuals are a separate, background call so the audio story starts
+instantly and the picture-book paints itself afterwards.
 
 ---
 
@@ -207,7 +214,6 @@ Child-safety is enforced, not just prompted:
 Lullow/
 ├── README.md                  ← you are here
 ├── API_CONTRACT.md            ← full endpoint contract (source of truth for FE/BE)
-├── Lullow_Project_Plan.md     ← product spec
 ├── .env.example               ← all sponsor keys documented (copy → .env)
 ├── scripts/healthcheck.py     ← end-to-end integration health monitor
 ├── backend/
@@ -217,10 +223,13 @@ Lullow/
 │   │   ├── config.py          ← settings + live-vs-mock feature_status()
 │   │   ├── models/schemas.py  ← Pydantic data model (the shared contract)
 │   │   ├── prompts/prompts.py ← prompts (voice/tone + safety + scene/mood rules)
-│   │   ├── integrations/      ← anthropic, fetchai, deepgram, redis (app/profile),
-│   │   │                         image, pika, govee
-│   │   ├── services/          ← emotion, planner, safety, story, ritual, visual,
-│   │   │                         journal, memory, prompt_agent, rag/agent memory
+│   │   ├── integrations/      ← anthropic, fetchai, deepgram/voice, redis
+│   │   │                         (app/profile) + vector_store + embedding,
+│   │   │                         image (gemini/openai/midjourney), pika, govee,
+│   │   │                         arize, terac
+│   │   ├── services/          ← emotion, comfort_strategy, planner, safety, story,
+│   │   │                         story_retrieval, visual, journal, memory,
+│   │   │                         prompt_agent, review_trail, auth, asset_cache
 │   │   └── routers/           ← auth, session, story, voice, visual, profile,
 │   │   │                         settings, journal, lamp, rag, admin
 │   └── tests/                 ← 173 pytest tests (deterministic, mock mode)
@@ -231,10 +240,12 @@ Lullow/
         ├── pages/             ← ProfilePicker (dreamscape), ChildMode, ParentDashboard,
         │                         profile create/edit
         ├── components/        ← NightSky, NinoFox, MicButton, HelpScreen,
-        │                         BreathingCircle, BgmToggle, StatusBadge, …
-        ├── lib/bgm.ts         ← looping lullaby BGM (random track, duck/mute)
+        │                         StorybookReader (silent), BgmToggle, StatusBadge,
+        │                         ProfileSwitcher, WarmBackground, Brand, …
+        ├── lib/               ← bgm.ts (looping lullaby, steady level + mute),
+        │                         audioFade.ts (eased volume ramps), profileStore.ts
         ├── context/           ← ProfileContext (per-device roster + active child)
-        └── hooks/useAudio.ts  ← shared unlocked audio el, narration rate, BGM ducking
+        └── hooks/useAudio.ts  ← shared unlocked audio el + narration rate/volume
 ```
 
 ---
@@ -252,7 +263,8 @@ Lullow/
   - `ANTHROPIC_API_KEY` (Claude) · `FETCHAI_API_KEY` / `ASI_ONE_API_KEY` (ASI One).
   - `DEEPGRAM_API_KEY` · `DEEPGRAM_TTS_MODEL` (default `aura-2-cora-en`).
   - `REDIS_URL` (+ optional split `REDIS_APP_URL` / `REDIS_PROFILE_URL`).
-  - `GEMINI_API_KEY` / `OPENAI_API_KEY` (image) · `PIKA_API_KEY` (clips).
+  - `IMAGE_PROVIDER` + `GEMINI_API_KEY` / `OPENAI_API_KEY` / `MIDJOURNEY_API_KEY`
+    (image) · `PIKA_API_KEY` (clips).
   - `GOVEE_API_KEY` / `GOVEE_DEVICE` / `GOVEE_SKU` (physical lamp).
   - `ARIZE_*`, `TERAC_*` (observability / annotation).
 
@@ -263,15 +275,16 @@ Lullow/
 1. **Profile picker** (`/`) → create a child (name, age, favorites) → open it.
 2. **Child mode** → "Hi, {name}" → say/type *"I'm scared of the dark and I miss
    my mom."* → hear the gentle reflection. Lullaby BGM fades in.
-3. Pick **Picture-book** (or Audio-only) → a personalized story plays scene by
-   scene; the **mood lamp** shifts with each scene → ends on a **breathing
-   ritual** (warm calm) → goodnight (lamp fades off).
-4. Try a **danger phrase** (e.g. *"someone is hurting me"*) → it does **not**
+3. **Continue** → a personalized story plays as **calming audio** (eyes closed);
+   the **mood lamp** shifts with each scene → **goodnight** (lamp fades off).
+4. At goodnight, tap **"📖 Read last night's storybook"** → a silent, self-paced
+   picture book of the same story (painted in the background while it played).
+5. Try a **danger phrase** (e.g. *"someone is hurting me"*) → it does **not**
    tell a story; it shows the warm help screen.
-5. **Parent dashboard** (`/parent`) → review the story's **review trail + safety
-   scores**, **revise** it, **approve** it (watch the story world remember the
-   theme), and browse the **growth journal**.
-6. Note the **live/mock badge** showing which integrations are wired.
+6. **Parent dashboard** (`/parent`) → review the story's **review trail + safety
+   scores**, open the **storybook**, **revise** it, **approve** it (watch the
+   story world remember the theme), and browse the **growth journal**.
+7. Note the **live/mock badge** showing which integrations are wired.
 
 ---
 
@@ -284,31 +297,23 @@ Lullow/
 - **Lamp is optional hardware:** with no `GOVEE_*` keys, `/api/lamp/*` and the
   per-scene calls are silent no-ops; calls run in a background thread and swallow
   errors so the lamp can never slow or break the bedtime flow.
-- **Live image paths** (Gemini / OpenAI reference-image) are only exercised with
-  a real key — verify character consistency manually once keys are set.
+- **Live image paths** (Gemini / OpenAI / Midjourney reference-image, set via
+  `IMAGE_PROVIDER`) are only exercised with a real key — verify character
+  consistency manually once keys are set.
 - Generated artifacts are written under `backend/generated/` (git-ignored).
 
-See `Lullow_Project_Plan.md` for the full product spec and sponsor-track rationale.
+See `API_CONTRACT.md` for the full endpoint contract shared by frontend and backend.
 
 ---
 
 ## Contributors
 
-Lullow was built at the **2026 UC Berkeley AI Hackathon** by four people, each
-owning a workstream:
+Lullow was built at the **2026 UC Berkeley AI Hackathon** by four people:
 
-- **Eugene Gu** — [@eugenegujing](https://github.com/eugenegujing) · *PR #1* —
-  Live voice pipeline (Deepgram Aura-2 STT/TTS, continuous calming narration),
-  character-consistent picture-book, looping lullaby BGM, end-to-end health monitor.
-- **Srinivas Rao Chavan** — [@srinivas1698](https://github.com/srinivas1698) ·
-  *PR #3* — RAG backend: split Redis memory, vector store + agent memory
-  (semantic/episodic/procedural/safety/working), auth & sessions, sponsor integrations.
-- **Thinh Nguyen** — [@mthinhngn](https://github.com/mthinhngn) · *PR #2* —
-  Moonlit "dreamscape" profile-picker redesign (animated portraits, sleeping moon,
-  stars/mist/clouds, reduced-motion support).
-- **gualle** — [@gualle](https://github.com/gualle) · *PR #4* — Physical **Govee
-  mood lamp** synced to each story scene's atmosphere (mood→color palette,
-  Claude-tagged moods with a keyword fallback).
+- **Eugene Gu** — [@eugenegujing](https://github.com/eugenegujing)
+- **Srinivas Rao Chavan** — [@srinivas1698](https://github.com/srinivas1698)
+- **Thinh Nguyen** — [@mthinhngn](https://github.com/mthinhngn)
+- **Ella Wu** — [@gualle](https://github.com/gualle)
 
 ---
 
